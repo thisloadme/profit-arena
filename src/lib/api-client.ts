@@ -19,7 +19,7 @@ export async function apiFetch<T>(
     const error =
       typeof payload === "object" && payload && "error" in payload
         ? String((payload as { error: unknown }).error)
-        : `Request gagal (${res.status})`;
+        : `Request failed (${res.status})`;
     return { ok: false, error, status: res.status };
   }
   return { ok: true, data: payload as T };

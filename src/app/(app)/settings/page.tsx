@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [riskProfile, setRiskProfile] = useState("MODERATE");
 
   useEffect(() => {
-    apiFetch<Profile>("/api/profile").then((r) => {
+    apiFetch<Profile>("/api/profile", { method: "GET" }).then((r) => {
       if (r.ok && r.data) {
         setProfile(r.data);
         setBio(r.data.bio ?? "");

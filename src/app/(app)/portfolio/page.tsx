@@ -27,7 +27,7 @@ export default function PortfolioPage() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    apiFetch<{ assets: Asset[] }>("/api/portfolio").then((r) => {
+    apiFetch<{ assets: Asset[] }>("/api/portfolio", { method: "GET" }).then((r) => {
       if (r.ok && r.data) {
         setAssets(r.data.assets);
         setOrder(r.data.assets.map((a: Asset) => a.symbol));

@@ -34,7 +34,7 @@ export default function BusinessPage() {
 
   async function load() {
     setLoading(true);
-    const r = await apiFetch<{ businesses: Biz[] }>("/api/business");
+    const r = await apiFetch<{ businesses: Biz[] }>("/api/business", { method: "GET" });
     if (r.ok) setBizs(r.data.businesses);
     setLoading(false);
   }

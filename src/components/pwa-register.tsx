@@ -2,16 +2,27 @@
 
 import { useEffect, useState } from "react";
 
-// ponytail: deferredPrompt kept as module-level — the event is fired once.
+// ponytail: skip SW in dev — prevents HMR reload loops from stale cache.
+const IS_DEV = process.env.NODE_ENV === "development";
+
 let deferredPrompt: Event | null = null;
 
 export function PwaRegister() {
   const [showInstall, setShowInstall] = useState(false);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
+    if (!("serviceWorker" in navigator)) return;
+
+    // ponytail: always unregister old SWs (kills reload loops from stale cache)
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      if (regs.length === 0) return;
+      Promise.all(regs.map((r) => r.unregister())).then(() => {
+        if (navigator.serviceWorker.controller) location.reload();
+      });
+    });
+
+    if (IS_DEV) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
 
     const handler = (e: Event) => {
       e.preventDefault();
