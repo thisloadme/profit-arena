@@ -34,6 +34,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# internal design docs (not for public)
+PRD.md
+SRS.md
+DESIGN.md
+IMPLEMENTATION_CHECKLIST.md
+
 # vercel
 .vercel
 
