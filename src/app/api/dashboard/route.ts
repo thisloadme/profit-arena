@@ -1,0 +1,100 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
+import { getActiveEvents } from "@/server/engine/event-engine";
+
+/**
+ * Dashboard aggregation endpoint.
+ * ponytail: single fetch, one round-trip per tick. Split when any sub-section
+ * becomes a bottleneck (unlikely at MVP scale).
+ */
+export async function GET() {
+  const session = await getSession();
+  if (!session?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const uid = session.sub;
+
+  const [user, loans, events, txns, assetsWithPrice] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: uid },
+      select: { cash: true, netWorth: true, totalAssets: true, totalDebt: true },
+    }),
+    prisma.loan.findMany({
+      where: { borrowerId: uid, status: "ACTIVE" },
+      select: { id: true, amount: true, interestRate: true, remainingAmount: true, dueDate: true },
+      orderBy: { dueDate: "asc" },
+      take: 5,
+    }),
+    getActiveEvents(),
+    // Daily cash-flow for last 30 days
+    prisma.$queryRaw<{ day: Date; net: number }[]>`
+      SELECT DATE("createdAt") as day, SUM(amount) as net
+      FROM transactions
+      WHERE "userId" = ${uid}::uuid AND "createdAt" >= NOW() - INTERVAL '30 days'
+      GROUP BY day ORDER BY day
+    `,
+    prisma.asset.findMany({
+      where: { userId: uid },
+      select: { type: true, symbol: true, quantity: true, currentPrice: true, averagePrice: true },
+      orderBy: { type: "asc" },
+    }),
+  ]);
+
+  // Asset allocation: group by type
+  const allocMap = new Map<string, { value: number; invested: number }>();
+  for (const a of assetsWithPrice) {
+    const val = a.quantity * a.currentPrice;
+    const cost = a.quantity * a.averagePrice;
+    const existing = allocMap.get(a.type) ?? { value: 0, invested: 0 };
+    existing.value += val;
+    existing.invested += cost;
+    allocMap.set(a.type, existing);
+  }
+  const allocation = Array.from(allocMap.entries()).map(([type, v]) => ({
+    type,
+    value: v.value,
+    invested: v.invested,
+    pnl: v.value - v.invested,
+    pnlPct: v.invested > 0 ? ((v.value - v.invested) / v.invested) * 100 : 0,
+  }));
+
+  // Sparkline: compute running balance over the last 30 days.
+  // ponytail: start from (cash - Σ all txn amounts) and walk forward.
+  const now = new Date();
+  const thirtyAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const txnsByDay = new Map<string, number>();
+  let totalFromTxns = 0;
+  for (const tx of txns as { day: Date; net: number }[]) {
+    const key = tx.day.toISOString().slice(0, 10);
+    txnsByDay.set(key, (txnsByDay.get(key) ?? 0) + Number(tx.net));
+    totalFromTxns += Number(tx.net);
+  }
+  const baseCash = user.cash - totalFromTxns;
+  const sparkline: { date: string; value: number }[] = [];
+  for (let i = 30; i >= 0; i--) {
+    const d = new Date(thirtyAgo.getTime() + i * 24 * 60 * 60 * 1000);
+    const key = d.toISOString().slice(0, 10);
+    const running = baseCash + (txnsByDay.get(key) ?? 0);
+    sparkline.push({ date: key, value: Math.round(running * 100) / 100 });
+  }
+
+  return NextResponse.json({
+    netWorth: user.netWorth,
+    cash: user.cash,
+    totalAssets: user.totalAssets,
+    totalDebt: user.totalDebt,
+    allocation,
+    loans,
+    events: events.map((e) => ({
+      id: e.id,
+      eventType: e.eventType,
+      description: e.description,
+      endAt: e.endAt,
+    })),
+    sparkline,
+    // passthrough for the chart to recompute
+    cashFlowRaw: (txns as { day: Date; net: number }[]).map((t) => ({
+      date: t.day.toISOString().slice(0, 10),
+      net: Number(t.net),
+    })),
+  });
+}

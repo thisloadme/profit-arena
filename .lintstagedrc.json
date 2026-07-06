@@ -1,0 +1,4 @@
+{
+  "*.{ts,tsx,js,jsx,mjs}": ["next lint --fix", "prettier --write"],
+  "*.{json,md,css}": ["prettier --write"]
+}

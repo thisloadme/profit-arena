@@ -1,0 +1,373 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  username     String    @unique
+  email        String    @unique
+  passwordHash String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  // Financial Summary (denormalized for performance, updated via triggers or jobs)
+  netWorth    Float @default(0)
+  totalAssets Float @default(0)
+  totalDebt   Float @default(0)
+  cash        Float @default(0)
+
+  riskProfile RiskProfile @default(MODERATE)
+
+  profile          UserProfile?
+  assets           Asset[]
+  businesses       Business[]
+  employments      Employment[]
+  loansGiven       Loan[]            @relation("LoanLender")
+  loansTaken       Loan[]            @relation("LoanBorrower")
+  transactions     Transaction[]
+  notifications    Notification[]
+  creditScore      CreditScore?
+  tutorialProgress TutorialProgress?
+  userAchievements UserAchievement[]
+  userQuests       UserQuest[]
+  watchedAssets    WatchedAsset[]
+  limitOrders      LimitOrder[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @db.Uuid
+  avatarUrl   String?
+  bio         String?
+  dateOfBirth DateTime?
+  location    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+enum RiskProfile {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+}
+
+enum AssetType {
+  CASH
+  STOCK
+  CRYPTO
+  BOND
+  MUTUAL_FUND
+  PROPERTY
+}
+
+model Asset {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  type         AssetType
+  symbol       String // e.g., "AAPL", "BTC", "GOVT_BOND"
+  name         String
+  quantity     Float
+  averagePrice Float
+  currentPrice Float // denormalized, updated periodically
+  lastUpdated  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@map("assets")
+}
+
+model MarketData {
+  id           String    @id @default(uuid()) @db.Uuid
+  symbol       String    @unique
+  type         AssetType
+  currentPrice Float
+  volatility   Float // 0.0 - 1.0
+  trendFactor  Float // macro influence -1.0 to 1.0
+  lastUpdated  DateTime  @updatedAt
+
+  @@map("market_data")
+}
+
+model Business {
+  id             String   @id @default(uuid()) @db.Uuid
+  ownerId        String   @db.Uuid
+  name           String
+  type           String // Cafe, TechStartup, Retail, etc.
+  level          Int      @default(1)
+  revenuePerTick Float    @default(0)
+  expensePerTick Float    @default(0)
+  employeeCount  Int      @default(1)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  createdAtTick  Int      @default(0) // game tick when created
+  updatedAt      DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("businesses")
+}
+
+model Employment {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  companyName   String
+  position      String
+  salaryPerTick Float
+  isActive      Boolean  @default(true)
+  startDate     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employments")
+}
+
+model Loan {
+  id              String     @id @default(uuid()) @db.Uuid
+  lenderId        String     @db.Uuid
+  borrowerId      String?    @db.Uuid
+  amount          Float
+  interestRate    Float // monthly percentage
+  tenorMonths     Int
+  remainingAmount Float
+  status          LoanStatus @default(PENDING)
+  createdAt       DateTime   @default(now())
+  dueDate         DateTime?
+
+  lender   User  @relation("LoanLender", fields: [lenderId], references: [id])
+  borrower User? @relation("LoanBorrower", fields: [borrowerId], references: [id])
+
+  @@map("loans")
+}
+
+enum LoanStatus {
+  PENDING
+  ACTIVE
+  PAID
+  DEFAULTED
+}
+
+model Transaction {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @db.Uuid
+  type         TransactionType
+  amount       Float
+  description  String
+  relatedAsset String? // symbol if related to asset
+  createdAt    DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  SALARY
+  BUSINESS_REVENUE
+  EXPENSE
+  LOAN_GIVEN
+  LOAN_RECEIVED
+  LOAN_PAYMENT
+  LOAN_INTEREST
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model GameEvent {
+  id           String    @id @default(uuid()) @db.Uuid
+  eventType    String
+  description  String
+  impactFactor Float // global impact
+  startAt      DateTime
+  endAt        DateTime?
+  isActive     Boolean   @default(true)
+
+  @@map("game_events")
+}
+
+// Historical price snapshot per asset, used for charts.
+model PriceHistory {
+  id     String   @id @default(uuid()) @db.Uuid
+  symbol String
+  price  Float
+  tickAt DateTime @default(now())
+
+  @@index([symbol, tickAt])
+  @@map("price_history")
+}
+
+// 1-1 with User. Simple credit score (300-850).
+model CreditScore {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  score     Int      @default(700)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_scores")
+}
+
+// Tutorial step progress (1-1 with User).
+model TutorialProgress {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  currentStep       Int      @default(0)
+  completed         Boolean  @default(false)
+  skipped           Boolean  @default(false)
+  dismissedTooltips String[] @default([])
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutorial_progress")
+}
+
+// Cached leaderboard row.
+model LeaderboardSnapshot {
+  id         String            @id @default(uuid()) @db.Uuid
+  userId     String            @db.Uuid
+  period     LeaderboardPeriod
+  rank       Int
+  netWorth   Float
+  prevRank   Int?
+  snapshotAt DateTime          @default(now())
+
+  @@unique([period, userId])
+  @@index([period, rank])
+  @@map("leaderboard_snapshots")
+}
+
+enum LeaderboardPeriod {
+  ALL_TIME
+  WEEKLY
+}
+
+model Achievement {
+  id          String @id @default(uuid()) @db.Uuid
+  code        String @unique // e.g., FIRST_MILLION
+  name        String
+  description String
+  iconKey     String @default("badge")
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  achievementId String   @db.Uuid
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Quest {
+  id          String @id @default(uuid()) @db.Uuid
+  code        String @unique
+  title       String
+  description String
+  targetCount Int    @default(1)
+  rewardCash  Float  @default(0)
+
+  userQuests UserQuest[]
+
+  @@map("quests")
+}
+
+model UserQuest {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  questId    String   @db.Uuid
+  periodDate DateTime // the day this quest belongs to (date only)
+  progress   Int      @default(0)
+  completed  Boolean  @default(false)
+  claimed    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id])
+
+  @@unique([userId, questId, periodDate])
+  @@index([userId, periodDate])
+  @@map("user_quests")
+}
+
+model WatchedAsset {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  symbol String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@map("watched_assets")
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  EXECUTED
+  CANCELLED
+}
+
+model LimitOrder {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @db.Uuid
+  symbol     String
+  type       OrderType
+  quantity   Float
+  limitPrice Float
+  status     OrderStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+  executedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, symbol])
+  @@map("limit_orders")
+}
+
+model SimulationState {
+  id         Int      @id @default(1)
+  tickNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@map("simulation_state")
+}

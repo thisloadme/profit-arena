@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
+/*
+ * Financial Simulation Arena — Light theme only (DESIGN.md v1.1).
+ * Compact density, dimmed professional palette (no neon, WCAG AA).
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces — layered depth: 0=body, 1=card, 2=raised (modal/dropdown) */
+  --bg-base: #f8fafc;
+  --bg-card: #ffffff;
+  --surface-raised: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Shadows for depth */
+  --shadow-card: 0 1px 3px 0 rgba(0,0,0,.04), 0 1px 2px -1px rgba(0,0,0,.06);
+  --shadow-raised: 0 4px 16px -2px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.06);
+
+  /* Text */
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  /* Brand — dimmed, ≤70% saturation */
+  --primary: #1e3a5f;        /* deep blue */
+  --primary-hover: #16314f;
+  --primary-soft: #e8eef5;   /* tint background */
+  --accent: #3b82c4;         /* steel cyan */
+
+  /* Semantic */
+  --profit: #16a34a;
+  --profit-soft: #dcfce7;
+  --loss: #dc2626;
+  --loss-soft: #fee2e2;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --info: #4f46e5;
+  --info-soft: #e0e7ff;
+
+  /* Rings & focus */
+  --ring: #3b82c4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg-base);
+  --color-card: var(--bg-card);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-profit: var(--profit);
+  --color-profit-soft: var(--profit-soft);
+  --color-loss: var(--loss);
+  --color-loss-soft: var(--loss-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  /* Compact type scale (13-14 body, tighter headings) */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+
+  /* Fonts */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Radii — small, modern fintech */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html, body {
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular numerals for all financial figures */
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Utility helpers — semantic colors */
+.text-profit { color: var(--profit); }
+.text-loss   { color: var(--loss); }
+.text-warning { color: var(--warning); }
+.text-info   { color: var(--info); }
+.text-muted-2 { color: var(--text-muted); }
+.text-faint  { color: var(--text-faint); }
+
+.bg-card { background: var(--bg-card); }
+.bg-soft { background: var(--primary-soft); }
+.border-default { border-color: var(--border); }
+
+/* Compact card */
+.card-compact {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Interactive card (clickable) */
+.card-interactive {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Subtle focus ring */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--ring);
+}
+
+/* Scrollbar (subtle, compact) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

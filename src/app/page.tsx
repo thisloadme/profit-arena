@@ -1,65 +1,119 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { motion } from "framer-motion";
+import Link from "next/link";
+import {
+  CandlestickChart,
+  Store,
+  HandCoins,
+  TrendingUp,
+  ArrowRight,
+} from "lucide-react";
+
+const FEATURES = [
+  {
+    icon: CandlestickChart,
+    title: "Live Market",
+    desc: "Trade stocks, crypto, bonds & funds with real-time price simulation.",
+  },
+  {
+    icon: Store,
+    title: "Business Builder",
+    desc: "Start and scale ventures from cafes to tech startups.",
+  },
+  {
+    icon: HandCoins,
+    title: "P2P Lending",
+    desc: "Borrow or lend — earn interest or fuel your next move.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Portfolio Tracker",
+    desc: "Track net worth, P&L, and allocations in one dashboard.",
+  },
+];
+
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
+};
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#0b1a2e] via-[#142b44] to-[#1e3a5f] px-4">
+      {/* Animated orbs */}
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-accent/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-primary-soft/10 blur-[120px]" />
+
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="flex w-full max-w-3xl flex-col items-center gap-10"
+      >
+        {/* Hero */}
+        <motion.div variants={fadeUp} className="flex flex-col items-center gap-4 text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            Financial Simulation
+            <span className="bg-gradient-to-r from-accent to-blue-300 bg-clip-text text-transparent">
+              {" "}Arena
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-md text-sm text-blue-200/70">
+            Build wealth from zero. Trade markets, run businesses, manage
+            loans — all in a risk-free simulation.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        </motion.div>
+
+        {/* CTA */}
+        <motion.div variants={fadeUp} className="flex items-center gap-3">
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition-all hover:brightness-110"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Get Started
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-5 py-2.5 text-sm font-medium text-blue-100 transition-all hover:bg-white/5"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Sign In
+          </Link>
+        </motion.div>
+
+        {/* Features */}
+        <motion.div
+          variants={fadeUp}
+          className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4"
+        >
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-4 text-center backdrop-blur-sm"
+            >
+              <f.icon className="h-5 w-5 text-accent" />
+              <span className="text-xs font-semibold text-white">{f.title}</span>
+              <span className="text-[10px] leading-relaxed text-blue-200/60">
+                {f.desc}
+              </span>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Footer */}
+        <motion.p
+          variants={fadeUp}
+          className="text-[11px] text-blue-200/40"
+        >
+          Start with zero. Learn without risk.
+        </motion.p>
+      </motion.div>
+    </main>
   );
 }
