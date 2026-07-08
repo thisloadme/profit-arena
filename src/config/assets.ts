@@ -30,8 +30,8 @@ export const ASSET_SEEDS: AssetSeed[] = [
   { symbol: "BTC",  name: "Bitcoin",        type: AssetType.CRYPTO, basePrice: 64_000, volatility: 0.04, trendFactor: 0.0007 },
   { symbol: "ETH",  name: "Ethereum",       type: AssetType.CRYPTO, basePrice: 3_400,  volatility: 0.045, trendFactor: 0.0006 },
   { symbol: "SOL",  name: "Solana",         type: AssetType.CRYPTO, basePrice: 145,    volatility: 0.06,  trendFactor: 0.0008 },
-  { symbol: "XRP",  name: "Ripple",         type: AssetType.CRYPTO, basePrice: 0.52,   volatility: 0.05,  trendFactor: 0.0003 },
-  { symbol: "DOGE", name: "Dogecoin",       type: AssetType.CRYPTO, basePrice: 0.12,   volatility: 0.08,  trendFactor: 0.0001 },
+  { symbol: "XRP",  name: "Ripple",         type: AssetType.CRYPTO, basePrice: 1.50,  volatility: 0.05,  trendFactor: 0.0003 },
+  { symbol: "DOGE", name: "Dogecoin",       type: AssetType.CRYPTO, basePrice: 2.00,  volatility: 0.08,  trendFactor: 0.0001 },
 
   // Bonds — low vol, capital preservation
   { symbol: "GB10Y", name: "Govt Bond 10Y",  type: AssetType.BOND, basePrice: 1_000, volatility: 0.003, trendFactor: 0.00005 },

@@ -6,6 +6,7 @@ import { Money } from "@/components/ui/money";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api-client";
+import "./print.css";
 
 type ReportDetail = { type: string; total: number; count: number };
 type ReportData = { year: number; month: number; income: number; expense: number; net: number; details: ReportDetail[] };
@@ -41,10 +42,14 @@ export default function ReportsPage() {
   }, [year, month]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-primary">Financial Report</h1>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <button onClick={() => window.print()}
+            className="rounded border border-border bg-card px-2.5 py-1.5 text-xs text-text-muted hover:bg-soft">
+            🖨️ PDF
+          </button>
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
             className="h-8 rounded border border-border bg-card px-2 text-xs text-text outline-none">
             {[2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}

@@ -1,0 +1,11 @@
+/* Print stylesheet for browser → PDF export via File > Print > Save as PDF */
+@media print {
+  /* Hide chrome */
+  nav, header > *, .fab, .sidebar, .bottom-nav, button, select,
+  .no-print { display: none !important; }
+
+  body { background: #fff !important; color: #000 !important; font-size: 11pt; }
+  .card-compact { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+  table { font-size: 9pt; }
+  .tnum { font-family: "Courier New", monospace; }
+}

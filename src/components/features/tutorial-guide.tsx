@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -68,21 +69,24 @@ export function TutorialGuide() {
       skipped: boolean;
     }>("/api/tutorial");
     if (r.ok) setProgress(r.data);
-    setLoading(false);
+    else setLoading(false);
   }
 
   async function goToStep(step: number) {
-    await apiFetch("/api/tutorial", { method: "PATCH", body: { step } });
+    const r = await apiFetch("/api/tutorial", { method: "PATCH", body: { step } });
+    if (!r.ok) { toast.error(r.error); return; }
     setProgress((p) => (p ? { ...p, currentStep: step } : p));
   }
 
   async function markSkipped() {
-    await apiFetch("/api/tutorial", { method: "PATCH", body: { skipped: true } });
+    const r = await apiFetch("/api/tutorial", { method: "PATCH", body: { skipped: true } });
+    if (!r.ok) { toast.error(r.error); return; }
     setProgress((p) => (p ? { ...p, skipped: true } : p));
   }
 
   async function markCompleted() {
-    await apiFetch("/api/tutorial", { method: "PATCH", body: { completed: true } });
+    const r = await apiFetch("/api/tutorial", { method: "PATCH", body: { completed: true } });
+    if (!r.ok) { toast.error(r.error); return; }
     router.push("/dashboard");
   }
 

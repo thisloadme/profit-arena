@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import next from "next";
+import { prisma } from "@/lib/prisma";
 import { attachSocketServer } from "@/server/engine/socket-server";
 import { startTicker, getTickerState } from "@/server/engine/tick-scheduler";
 
@@ -35,6 +36,21 @@ async function main() {
       }`,
     );
   });
+
+  // Graceful shutdown — close server & DB on SIGTERM/SIGINT.
+  const shutdown = () => {
+    console.log("\nShutting down…");
+    httpServer.close(() => {
+      console.log("  ✓ HTTP server closed");
+      prisma.$disconnect().then(() => {
+        console.log("  ✓ DB disconnected");
+        process.exit(0);
+      });
+    });
+    setTimeout(() => process.exit(1), 5_000); // force exit after 5s
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
 main().catch((err) => {

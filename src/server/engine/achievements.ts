@@ -11,6 +11,7 @@ type EvalCtx = {
   hasTraded: boolean;
   hasLent: boolean;
   hasBorrower: boolean;
+  hasSurvivedRecession: boolean;
 };
 
 /**
@@ -37,6 +38,7 @@ export async function evaluateAchievements(ctx: EvalCtx): Promise<void> {
     { code: "CRYPTO_INVESTOR", condition: ctx.hasCrypto },
     { code: "BORROWER", condition: ctx.hasBorrower },
     { code: "LENDER", condition: ctx.hasLent },
+    { code: "SURVIVE_RECESSION", condition: ctx.hasSurvivedRecession },
   ];
 
   for (const c of checks) {

@@ -5,6 +5,7 @@
 import { PrismaClient, AssetType, RiskProfile } from "@prisma/client";
 import { ASSET_SEEDS } from "../src/config/assets";
 import { GAME_CONFIG } from "../src/config/game";
+import { hashPassword } from "../src/lib/auth";
 
 const ACHIEVEMENTS = [
   { code: "FIRST_TRADE", name: "Pertama Berdagang", description: "Lakukan transaksi beli pertama", iconKey: "shopping-cart" },
@@ -53,15 +54,16 @@ async function main() {
   }
 
   console.log("→ Seeding demo user (alice)…");
+  const demoPasswordHash = await hashPassword("demo123");
   const demo = await prisma.user.upsert({
     where: { email: "alice@example.com" },
     update: {},
     create: {
       username: "alice",
       email: "alice@example.com",
-      passwordHash: "$2a$12$placeholderhashplaceholderhashplaceholderhashplacehol", // replaced below
+      passwordHash: demoPasswordHash,
       riskProfile: RiskProfile.MODERATE,
-      cash: 10_000, // small seed so demo user can act; fresh users start at 0
+      cash: 10_000, // small seed so demo user can act; fresh users start at STARTING_CASH
       profile: { create: {} },
       creditScore: { create: { score: GAME_CONFIG.CREDIT_SCORE_DEFAULT } },
       tutorialProgress: { create: {} },

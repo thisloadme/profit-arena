@@ -3,8 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { GAME_CONFIG } from "@/config/game";
+import { checkAuthRateLimit } from "@/lib/auth-rate-limiter";
 
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!checkAuthRateLimit(ip)) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();

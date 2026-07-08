@@ -112,6 +112,12 @@ html, body {
 .bg-soft { background: var(--primary-soft); }
 .border-default { border-color: var(--border); }
 
+/* Compact spacing utilities */
+.px-card { padding-inline: 12px; }
+.py-card { padding-block: 16px; }
+.gap-tight { gap: 8px; }
+.gap-section { gap: 16px; }
+
 /* Compact card */
 .card-compact {
   background: var(--bg-card);

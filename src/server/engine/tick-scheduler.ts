@@ -147,34 +147,42 @@ export async function runOneTick(): Promise<void> {
       io?.emit("leaderboard:update", { tick: getState().tickNumber, count: lb.length });
     }
 
-    // 3c) Evaluate achievements (per user, every tick)
-    if (finResult.updatedUserIds.length > 0) {
-      // Batch fetch user state for achievement eval.
-      const achievementUsers = await prisma.user.findMany({
-        where: { id: { in: finResult.updatedUserIds } },
-        select: {
-          id: true,
-          netWorth: true,
-          assets: { select: { symbol: true, type: true } },
-          businesses: { where: { isActive: true }, select: { id: true } },
-          loansGiven: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
-          loansTaken: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
-        },
-      });
-      for (const u of achievementUsers) {
-        await evaluateAchievements({
-          userId: u.id,
-          netWorth: u.netWorth,
-          hasActiveLoan: u.loansTaken.length > 0,
-          activeAssets: u.assets.map((a) => ({ symbol: a.symbol, type: a.type })),
-          hasBusiness: u.businesses.length > 0,
-          hasCrypto: u.assets.some((a) => a.type === "CRYPTO"),
-          hasTraded: u.assets.length > 0,
-          hasLent: u.loansGiven.some((l) => l.status === "ACTIVE"),
-          hasBorrower: u.loansTaken.some((l) => l.status === "ACTIVE"),
+      // 3c) Evaluate achievements (per user, every tick)
+      if (finResult.updatedUserIds.length > 0) {
+        // Check if recession is active (for SURVIVE_RECESSION achievement)
+        const activeRecession = await prisma.gameEvent.findFirst({
+          where: { isActive: true, description: { startsWith: "Resesi" } },
+          select: { id: true },
         });
+        const hasActiveRecession = !!activeRecession;
+
+        // Batch fetch user state for achievement eval.
+        const achievementUsers = await prisma.user.findMany({
+          where: { id: { in: finResult.updatedUserIds } },
+          select: {
+            id: true,
+            netWorth: true,
+            assets: { select: { symbol: true, type: true } },
+            businesses: { where: { isActive: true }, select: { id: true } },
+            loansGiven: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
+            loansTaken: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
+          },
+        });
+        for (const u of achievementUsers) {
+          await evaluateAchievements({
+            userId: u.id,
+            netWorth: u.netWorth,
+            hasActiveLoan: u.loansTaken.length > 0,
+            activeAssets: u.assets.map((a) => ({ symbol: a.symbol, type: a.type })),
+            hasBusiness: u.businesses.length > 0,
+            hasCrypto: u.assets.some((a) => a.type === "CRYPTO"),
+            hasTraded: u.assets.length > 0,
+            hasLent: u.loansGiven.some((l) => l.status === "ACTIVE"),
+            hasBorrower: u.loansTaken.some((l) => l.status === "ACTIVE"),
+            hasSurvivedRecession: hasActiveRecession && u.netWorth > 0,
+          });
+        }
       }
-    }
 
     // 4) Broadcast
     if (io) {

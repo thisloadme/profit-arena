@@ -75,5 +75,10 @@ export async function POST(req: Request) {
     return { credit: totalCredit, quantity, symbol, price: market.currentPrice };
   });
 
+  // ponytail: anti-cheat — flag unusually large sells
+  if (quantity > 100_000) {
+    console.log("[anti-cheat] large sell", { userId: session.sub, symbol, quantity, credit: totalCredit });
+  }
+
   return NextResponse.json({ ok: true, trade });
 }

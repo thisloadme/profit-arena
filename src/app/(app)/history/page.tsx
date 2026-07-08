@@ -74,7 +74,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-primary">Transaction History</h1>
         <a

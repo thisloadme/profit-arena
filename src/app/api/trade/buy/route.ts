@@ -109,5 +109,10 @@ export async function POST(req: Request) {
   // ponytail: first trade tracking for analytics
   console.log("[event] buy", { userId: session.sub, symbol, quantity, cost: totalCost });
 
+  // ponytail: anti-cheat — flag unusually large buys
+  if (quantity > 100_000) {
+    console.log("[anti-cheat] large buy", { userId: session.sub, symbol, quantity, cost: totalCost });
+  }
+
   return NextResponse.json({ ok: true, trade });
 }

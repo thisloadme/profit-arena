@@ -13,8 +13,7 @@
     "db:migrate": "bunx prisma migrate dev",
     "db:deploy": "bunx prisma migrate deploy",
     "db:seed": "bunx tsx prisma/seed.ts",
-    "db:studio": "bunx prisma studio",
-    "prepare": "husky"
+    "db:studio": "bunx prisma studio"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

@@ -4,15 +4,15 @@
  */
 
 export const GAME_CONFIG = {
-  /** Player starting cash. Per PRD: start from 0. */
-  STARTING_CASH: 0,
+  /** Player starting cash. Per PRD: start from 0. Cash buffer for new player survival. */
+  STARTING_CASH: 5000,
 
   /** Default salary per tick for a fresh corporate job. */
   DEFAULT_SALARY_PER_TICK: 50,
 
   /** Living expense deducted every tick (with inflation applied). */
   LIVING_EXPENSE_PER_TICK: 20,
-  LIVING_EXPENSE_INFLATION_PER_TICK: 0.001, // 0.1% compounding
+  LIVING_EXPENSE_INFLATION_PER_TICK: 0.0003, // 0.03% compounding — gentle pressure, not punishing
 
   /** Tick interval in ms (overridable via env). 1 tick = 1 game minute. */
   TICK_INTERVAL_MS: Number(process.env.TICK_INTERVAL_MS) || 10_000,
@@ -20,8 +20,8 @@ export const GAME_CONFIG = {
   /** How many ticks in one game day (1440 min). Financial tick runs at this boundary. */
   TICKS_PER_GAME_DAY: 1440,
 
-  /** Game-time mapping: how many ticks make one game-month (for loan installments). */
-  TICKS_PER_GAME_MONTH: 43_200, // 1440 * 30
+  /** Game-time mapping: 1 game-day = 1440 ticks (1 game-month ≈ 1 game-day for loan feedback). */
+  TICKS_PER_GAME_MONTH: 1_440, // Loan repayment every ~4h real-time instead of 5 days
 
   /** Start date of the game world. All game time is relative to this. */
   GAME_START_DATE: new Date("2018-01-01T00:00:00Z"),
