@@ -1,5 +1,5 @@
 /**
- * Compute OHLC (candlestick) buckets from sorted price history.
+ * OHLC (candlestick) helpers.
  *
  * ponytail: no DB-side aggregation — group in-memory from PriceHistory.
  * MVP scale (<1000 points) makes this faster than a complex SQL query.
@@ -7,40 +7,33 @@
  */
 export type OHLC = { time: string; open: number; high: number; low: number; close: number };
 
-export function computeOHLC(
-  history: { price: number; tickAt: string }[],
-  /** Bucket key derived from tickAt — e.g. ISO date "2026-07-06" for daily, ISO hour for hourly. */
-  bucketKey: (d: string) => string,
+/**
+ * Bucket `history` (oldest→newest) into OHLC candles by grouping `bucketSize`
+ * consecutive rows per candle. Each candle's `time` is the game-time ISO string
+ * of its last row, computed by the caller from the tick offset.
+ *
+ * One row = one game-minute tick. `bucketSize` = game-minutes per candle.
+ */
+export function bucketByCount(
+  history: { price: number }[],
+  bucketSize: number,
+  /** Game-time ISO string for the row at history index `i` (i = 0 oldest). */
+  gameTimeAt: (i: number) => string,
 ): OHLC[] {
-  const buckets = new Map<string, OHLC>();
-
-  for (const h of history) {
-    const key = bucketKey(h.tickAt);
-    const existing = buckets.get(key);
-    if (!existing) {
-      buckets.set(key, {
-        time: key,
-        open: h.price,
-        high: h.price,
-        low: h.price,
-        close: h.price,
-      });
-    } else {
-      if (h.price > existing.high) existing.high = h.price;
-      if (h.price < existing.low) existing.low = h.price;
-      existing.close = h.price; // last price in bucket wins as close
-    }
+  if (bucketSize <= 1) {
+    return history.map((h, i) => ({ time: gameTimeAt(i), open: h.price, high: h.price, low: h.price, close: h.price }));
   }
-
-  return Array.from(buckets.values()).sort((a, b) => a.time.localeCompare(b.time));
-}
-
-/** Convenience: daily candles. */
-export function dailyOHLC(history: { price: number; tickAt: string }[]): OHLC[] {
-  return computeOHLC(history, (d: string) => d.slice(0, 10));
-}
-
-/** Hourly candles. */
-export function hourlyOHLC(history: { price: number; tickAt: string }[]): OHLC[] {
-  return computeOHLC(history, (d: string) => d.slice(0, 13));
+  const out: OHLC[] = [];
+  for (let i = 0; i < history.length; i += bucketSize) {
+    const slice = history.slice(i, i + bucketSize);
+    const prices = slice.map((s) => s.price);
+    out.push({
+      time: gameTimeAt(i + slice.length - 1),
+      open: prices[0]!,
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      close: prices[prices.length - 1]!,
+    });
+  }
+  return out;
 }

@@ -56,10 +56,10 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
         <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-20 w-full" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="mt-4 h-20 w-full" />
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-32 w-full" />
         </div>
@@ -68,27 +68,30 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-      <header>
-        <h1 className="text-xl font-bold text-primary">Portfolio</h1>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      <header className="mb-5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+          Holdings
+        </p>
+        <h1 className="mt-0.5 text-2xl font-bold text-text">Portfolio</h1>
       </header>
 
       {/* Summary */}
-      <div className="card-compact grid grid-cols-3 gap-4">
+      <div className="glass-panel mb-6 grid grid-cols-3 gap-4 p-5">
         <div>
-          <span className="text-xs text-text-muted">Total Value</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Total Value</span>
           <div className="tnum text-lg font-bold text-text">
             <Money value={totalValue} compact />
           </div>
         </div>
         <div>
-          <span className="text-xs text-text-muted">Total Invested</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Total Invested</span>
           <div className="tnum text-lg font-bold text-text">
             <Money value={totalCost} compact />
           </div>
         </div>
         <div>
-          <span className="text-xs text-text-muted">Unrealized P/L</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Unrealized P/L</span>
           <div className="tnum text-lg font-bold">
             <span className={totalPnl >= 0 ? "text-profit" : "text-loss"}>
               <Money value={totalPnl} signed={totalPnl >= 0} compact />
@@ -102,7 +105,7 @@ export default function PortfolioPage() {
 
       {/* Asset cards */}
       {sorted.length === 0 ? (
-        <div className="card-compact flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
+        <div className="glass-panel flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
           <p>No assets yet.</p>
           <a href="/market" className="font-medium text-accent hover:underline">
             Start investing →
@@ -125,8 +128,8 @@ export default function PortfolioPage() {
                 onDrop={() => handleDrop(i)}
                 onDragEnd={() => setDragIdx(null)}
                 className={cn(
-                  "card-compact flex flex-col gap-1.5 transition-shadow",
-                  isDragging && "opacity-50 shadow-raised ring-2 ring-accent",
+                  "glass-panel card-interactive flex flex-col gap-1.5 p-4",
+                  isDragging && "opacity-50 ring-2 ring-accent",
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -134,27 +137,27 @@ export default function PortfolioPage() {
                     <span className="cursor-grab text-text-faint hover:text-text-muted" aria-label="Drag to reorder">
                       <GripVertical className="h-3.5 w-3.5" />
                     </span>
-                    <span className="text-xs font-bold text-text">{a.symbol}</span>
+                    <span className="text-sm font-bold text-text">{a.symbol}</span>
                   </div>
-                  <span className="text-[10px] text-text-faint">
+                  <span className="tnum text-[10px] text-text-faint">
                     {a.quantity.toFixed(2)} units
                   </span>
                 </div>
-                <span className="text-sm text-text-muted">
+                <span className="text-xs text-text-muted">
                   {NAME_BY_SYMBOL[a.symbol] ?? a.name}
                 </span>
                 <div className="tnum text-base font-semibold text-text">
                   <Money value={value} compact />
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-text-muted">
+                  <span className="tnum text-text-muted">
                     Avg: <Money value={a.averagePrice} compact />
                   </span>
                   <span className={cn("font-medium", pnl >= 0 ? "text-profit" : "text-loss")}>
                     <PercentChange value={pnlP} />
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-text-faint">
+                <div className="tnum flex items-center justify-between text-[10px] text-text-faint">
                   <span>Market: <Money value={a.currentPrice} compact /></span>
                   <span>Alloc: {totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : "0"}%</span>
                 </div>

@@ -5,7 +5,7 @@ type Props = { className?: string; count?: number };
 export function Skeleton({ className }: Props) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-border", className)}
+      className={cn("animate-pulse rounded-md bg-surface-highest", className)}
       aria-hidden
     />
   );

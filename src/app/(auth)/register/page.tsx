@@ -33,7 +33,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-bg p-4">
+    <main className="relative flex min-h-svh items-center justify-center overflow-hidden bg-bg p-4">
+      <div className="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-primary/10 blur-[140px]" />
+      <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-accent/10 blur-[140px]" />
       <FormCard
         title="Create Account"
         subtitle="Start from zero, build your wealth"

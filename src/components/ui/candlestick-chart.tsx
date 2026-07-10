@@ -43,7 +43,7 @@ export function CandlestickChart({ candles, height = 180 }: Props) {
         const bodyBottom = Math.max(scale(c.open), scale(c.close));
         const bodyH = Math.max(1, bodyBottom - bodyTop);
         const up = c.close >= c.open;
-        const color = up ? "#16A34A" : "#DC2626";
+        const color = up ? "var(--profit)" : "var(--loss)";
         return (
           <g key={c.time}>
             {/* Wick (high-low line) */}

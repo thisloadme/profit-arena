@@ -58,28 +58,31 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-lg px-4 py-6 sm:px-6">
         <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="mt-4 h-24 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 sm:p-6">
-      <header>
-        <h1 className="text-xl font-bold text-primary">Settings</h1>
+    <div className="mx-auto w-full max-w-lg px-4 py-6 sm:px-6">
+      <header className="mb-5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+          Profile
+        </p>
+        <h1 className="mt-0.5 text-2xl font-bold text-text">Settings</h1>
       </header>
 
-      <div className="card-compact flex flex-col gap-3">
+      <div className="glass-panel flex flex-col gap-4 p-5">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Username">
-            <div className="h-9 flex items-center rounded-md border border-border bg-bg-base px-3 text-sm text-text-muted">
+            <div className="flex h-9 items-center rounded-md border border-border bg-surface-lowest/60 px-3 text-sm text-text-muted">
               {profile?.username}
             </div>
           </Field>
           <Field label="Email">
-            <div className="h-9 flex items-center rounded-md border border-border bg-bg-base px-3 text-sm text-text-muted">
+            <div className="flex h-9 items-center rounded-md border border-border bg-surface-lowest/60 px-3 text-sm text-text-muted">
               {profile?.email}
             </div>
           </Field>
@@ -107,7 +110,7 @@ export default function SettingsPage() {
           <select
             value={riskProfile}
             onChange={(e) => setRiskProfile(e.target.value)}
-            className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-text outline-none focus-ring"
+            className="h-9 w-full rounded-md border border-border bg-surface-lowest/60 px-3 text-sm text-text outline-none focus-ring"
           >
             {RISK_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -115,7 +118,7 @@ export default function SettingsPage() {
           </select>
         </Field>
 
-        <Button onClick={save} loading={saving} className="mt-2">
+        <Button onClick={save} loading={saving} className="mt-2 glow-primary">
           Save Settings
         </Button>
       </div>

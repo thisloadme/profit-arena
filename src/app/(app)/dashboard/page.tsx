@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getActiveEvents } from "@/server/engine/event-engine";
-import { Money } from "@/components/ui/money";
 import { AnimatedMoney } from "@/components/ui/animated-money";
 import { StatCard } from "@/components/ui/stat-card";
 import { NetWorthHero } from "@/components/features/net-worth-hero";
@@ -99,38 +98,46 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-      <header>
-        <h1 className="text-xl font-bold text-primary">Dashboard</h1>
-        <p className="text-sm text-text-muted">Welcome, {user.username}.</p>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      {/* Page header */}
+      <header className="mb-6">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+          Dashboard
+        </p>
+        <h1 className="mt-0.5 text-2xl font-bold text-text">
+          Welcome back, <span className="text-primary">{user.username}</span>
+        </h1>
       </header>
 
-      {/* Quick stats row */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Net Worth" value={<AnimatedMoney value={user.netWorth} compact />} />
-        <StatCard label="Cash" value={<AnimatedMoney value={user.cash} compact />} />
-        <StatCard label="Assets" value={<AnimatedMoney value={user.totalAssets} compact />} />
-        <StatCard label="Debt" value={<AnimatedMoney value={user.totalDebt} compact />} />
+      {/* Quick stats — glass variant, 4-up */}
+      <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard variant="glass" label="Net Worth" value={<AnimatedMoney value={user.netWorth} compact />} />
+        <StatCard variant="glass" label="Cash" value={<AnimatedMoney value={user.cash} compact />} />
+        <StatCard variant="glass" label="Assets" value={<AnimatedMoney value={user.totalAssets} compact />} />
+        <StatCard variant="glass" label="Debt" value={<AnimatedMoney value={user.totalDebt} compact />} />
       </section>
 
-      {/* Hero sparkline */}
-      <NetWorthHero
-        netWorth={user.netWorth}
-        prevNetWorth={sparkline.length > 1 ? sparkline[sparkline.length - 2].value : user.netWorth}
-        sparkline={sparkline}
-      />
+      {/* Main 12-col grid: 8 (left) + 4 (right rail) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left column */}
+        <div className="flex flex-col gap-6 lg:col-span-8">
+          <NetWorthHero
+            netWorth={user.netWorth}
+            prevNetWorth={sparkline.length > 1 ? sparkline[sparkline.length - 2].value : user.netWorth}
+            sparkline={sparkline}
+          />
 
-      {/* Middle: allocation + cashflow */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AllocationPie allocation={allocation} />
-        <CashFlowChart cashFlow={cashFlow} />
-      </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <AllocationPie allocation={allocation} />
+            <CashFlowChart cashFlow={cashFlow} />
+          </div>
 
-      {/* Right: loans + events + ticker + quests */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ActiveLoans loans={loans} />
-        <EventFeed events={eventList} />
-        <div className="flex flex-col gap-4">
+          <ActiveLoans loans={loans} />
+        </div>
+
+        {/* Right rail */}
+        <div className="flex flex-col gap-6 lg:col-span-4">
+          <EventFeed events={eventList} />
           <MarketTicker initial={market} />
           <DailyQuests />
         </div>

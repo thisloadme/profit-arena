@@ -18,7 +18,7 @@ type Props = {
 
 export function ActiveLoans({ loans, className }: Props) {
   return (
-    <div className={cn("card-compact", className)}>
+    <div className={cn("glass-panel p-4", className)}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
         Active Loans
       </h3>

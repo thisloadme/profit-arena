@@ -30,7 +30,7 @@ export function DailyQuests({ className }: { className?: string }) {
   if (loading || quests.length === 0) return null;
 
   return (
-    <div className={cn("card-compact", className)}>
+    <div className={cn("glass-panel p-4", className)}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
         Daily Quests
       </h3>

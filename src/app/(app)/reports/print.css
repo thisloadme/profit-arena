@@ -1,11 +1,23 @@
-/* Print stylesheet for browser → PDF export via File > Print > Save as PDF */
+/* Print stylesheet for browser → PDF export via File > Print > Save as PDF.
+   Forces light output regardless of theme so ink stays cheap and legible. */
 @media print {
   /* Hide chrome */
   nav, header > *, .fab, .sidebar, .bottom-nav, button, select,
   .no-print { display: none !important; }
 
   body { background: #fff !important; color: #000 !important; font-size: 11pt; }
-  .card-compact { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+
+  /* Flatten glass panels + compact cards to plain bordered boxes */
+  .glass-panel,
+  .card-compact {
+    break-inside: avoid;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+  .glass-panel::before { display: none !important; }
+
   table { font-size: 9pt; }
   .tnum { font-family: "Courier New", monospace; }
 }

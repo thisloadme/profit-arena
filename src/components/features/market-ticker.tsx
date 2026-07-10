@@ -54,7 +54,7 @@ export function MarketTicker({ initial }: { initial: Market[] }) {
   const top = initial.slice(0, 12).map((m) => m.symbol);
 
   return (
-    <section className="card-compact">
+    <section className="glass-panel p-4">
       <header className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-text">Market Live</h2>
         <span className={`text-xs ${connected ? "text-profit" : "text-text-faint"}`}>

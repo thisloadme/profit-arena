@@ -7,7 +7,6 @@ type DataPoint = { date: string; value: number };
 
 type Props = {
   data: DataPoint[];
-  color?: string;
   height?: number;
   showAxis?: boolean;
   className?: string;
@@ -15,7 +14,6 @@ type Props = {
 
 export function PriceChart({
   data,
-  color = "var(--accent)",
   height = 200,
   showAxis = true,
   className,

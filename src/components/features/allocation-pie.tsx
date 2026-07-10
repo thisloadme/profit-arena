@@ -4,8 +4,16 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/cn";
 
-// ponytail: color blind friendly palette – Wong (2011) + Tufte minimalism.
-const COLORS = ["#0072B2", "#D55E00", "#009E73", "#F0E442", "#CC79A7", "#56B4E9"];
+// Theme-aware palette via CSS variables — each segment resolves per-theme,
+// so the donut stays legible on both dark and light surfaces.
+const COLORS = [
+  "var(--primary)",   // emerald (STOCK)
+  "var(--accent)",    // electric blue (CRYPTO)
+  "var(--warning)",   // amber (BOND)
+  "var(--info)",      // indigo/blue (MUTUAL_FUND)
+  "var(--profit)",    // green (PROPERTY)
+  "var(--loss)",      // red (fallback 6th type)
+];
 const TYPE_LABELS: Record<string, string> = {
   STOCK: "Stocks",
   CRYPTO: "Crypto",
@@ -32,7 +40,7 @@ export function AllocationPie({ allocation, className }: Props) {
   const hasAssets = total > 0;
 
   return (
-    <div className={cn("card-compact", className)}>
+    <div className={cn("glass-panel p-4", className)}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
         Asset Allocation
       </h3>

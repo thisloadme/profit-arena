@@ -28,13 +28,13 @@ export function CashFlowChart({ cashFlow, className }: Props) {
   const allPositive = data.every((d) => d.net >= 0);
   const allNegative = data.every((d) => d.net <= 0);
   const getBarFill = (val: number) => {
-    if (allPositive) return "#16A34A";
-    if (allNegative) return "#DC2626";
-    return val >= 0 ? "#16A34A" : "#DC2626";
+    if (allPositive) return "var(--profit)";
+    if (allNegative) return "var(--loss)";
+    return val >= 0 ? "var(--profit)" : "var(--loss)";
   };
 
   return (
-    <div className={cn("card-compact", className)}>
+    <div className={cn("glass-panel p-4", className)}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Cash Flow

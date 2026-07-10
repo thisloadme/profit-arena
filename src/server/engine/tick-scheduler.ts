@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { GAME_CONFIG } from "@/config/game";
+import { MAX_RETENTION_TICKS, PRUNE_EVERY_TICKS } from "@/config/timeframes";
 import { nextPriceFor, consumeVolume, type ActiveEventImpact } from "./price-engine";
 import { expireEvents, getGlobalImpact, rollNewEvents, getActiveEvents } from "./event-engine";
 import { runFinancialTick } from "@/server/services/financial-tick";
@@ -90,6 +91,18 @@ export async function runOneTick(): Promise<void> {
 
     // Persist price history (batched)
     await prisma.priceHistory.createMany({ data: historyRows });
+
+    // Periodically drop history older than the max chart timeframe (3 game-months).
+    // Keeps the table bounded; runs every PRUNE_EVERY_TICKS ticks to stay cheap.
+    if (getState().tickNumber % PRUNE_EVERY_TICKS === 0) {
+      const cutoff = new Date(now.getTime() - MAX_RETENTION_TICKS * GAME_CONFIG.TICK_INTERVAL_MS);
+      try {
+        const dropped = await prisma.priceHistory.deleteMany({ where: { tickAt: { lt: cutoff } } });
+        if (dropped.count > 0) console.log(`[tick] pruned ${dropped.count} stale price-history rows (older than ${cutoff.toISOString()})`);
+      } catch (e) {
+        console.error("[tick] price-history prune failed:", e);
+      }
+    }
 
     // Update asset currentPrice for holders (denormalized)
     for (const u of updates) {

@@ -6,18 +6,31 @@ type Props = {
   value: ReactNode;
   hint?: ReactNode;
   icon?: ReactNode;
+  variant?: "compact" | "glass";
   className?: string;
 };
 
-/** Compact stat card for dashboard tiles. */
-export function StatCard({ label, value, hint, icon, className }: Props) {
+/**
+ * Stat card for dashboard tiles.
+ * - `compact`: legacy bordered card (card-compact).
+ * - `glass`: Stitch-style glassmorphism panel with top-edge sheen.
+ */
+export function StatCard({ label, value, hint, icon, variant = "compact", className }: Props) {
   return (
-    <div className={cn("card-compact flex flex-col gap-1", className)}>
-      <div className="flex items-center justify-between text-text-muted">
-        <span className="text-xs uppercase tracking-wide">{label}</span>
+    <div
+      className={cn(
+        "flex flex-col gap-1.5",
+        variant === "glass" ? "glass-panel p-4" : "card-compact",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+          {label}
+        </span>
         {icon && <span className="text-text-faint">{icon}</span>}
       </div>
-      <div className="tnum text-xl font-semibold text-text">{value}</div>
+      <div className="tnum text-xl font-bold text-text">{value}</div>
       {hint && <div className="text-xs text-text-muted">{hint}</div>}
     </div>
   );

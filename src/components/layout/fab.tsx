@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Plus, ShoppingCart, Store, HandCoins, Briefcase } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type Action = { label: string; icon: typeof Plus; href: string; soon?: boolean };
+type Action = { label: string; icon: typeof Plus; href: string };
 
 const ACTIONS: Action[] = [
-  { label: "Buy asset", icon: ShoppingCart, href: "/market", soon: true },
-  { label: "Start business", icon: Store, href: "/business", soon: true },
-  { label: "Take loan", icon: HandCoins, href: "/lending", soon: true },
-  { label: "Find job", icon: Briefcase, href: "/jobs", soon: true },
+  { label: "Buy asset", icon: ShoppingCart, href: "/market" },
+  { label: "Start business", icon: Store, href: "/business" },
+  { label: "Take loan", icon: HandCoins, href: "/lending" },
+  { label: "Find job", icon: Briefcase, href: "/jobs" },
 ];
 
 export function FloatingActions() {
@@ -35,16 +35,13 @@ export function FloatingActions() {
               <Icon className="h-3.5 w-3.5 text-primary" />
             </span>
             {a.label}
-            {a.soon && (
-              <span className="rounded bg-soft px-1 py-0.5 text-[9px] uppercase text-text-muted">soon</span>
-            )}
           </a>
         );
       })}
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform",
+          "flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg transition-transform glow-primary",
           open && "rotate-45",
         )}
         aria-label={open ? "Close quick actions" : "Open quick actions"}

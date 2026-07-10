@@ -97,9 +97,9 @@ export function TutorialGuide() {
   const step = STEPS[progress.currentStep] ?? STEPS[0];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-4 sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center">
       <div
-        className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-border bg-card p-5 shadow-xl"
+        className="glass-panel flex w-full max-w-sm flex-col gap-3 p-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Step indicator */}

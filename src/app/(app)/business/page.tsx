@@ -61,23 +61,26 @@ export default function BusinessPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-primary">Business</h1>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      <header className="mb-5 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+            Ventures
+          </p>
+          <h1 className="mt-0.5 text-2xl font-bold text-text">Business</h1>
+        </div>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="h-3.5 w-3.5" /> New Business
         </Button>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="grid w-full max-w-md grid-cols-1 gap-3">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
         </div>
       ) : bizs.length === 0 ? (
-        <div className="card-compact flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
+        <div className="glass-panel flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
           <p>No businesses yet.</p>
           <p>Start with a Cafe from $50,000 setup cost.</p>
           <Button size="sm" onClick={() => setShowCreate(true)}>New Business</Button>
@@ -88,11 +91,11 @@ export default function BusinessPage() {
             const bt = BUSINESS_TYPES.find((t) => t.code === b.type);
             const profit = b.revenuePerTick - b.expensePerTick;
             return (
-              <div key={b.id} className="card-compact flex flex-col gap-2">
+              <div key={b.id} className="glass-panel flex flex-col gap-2.5 p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-bold text-text">{b.name}</span>
-                    <span className="ml-2 text-[10px] text-text-muted">{bt?.label ?? b.type}</span>
+                    <span className="ml-2 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">{bt?.label ?? b.type}</span>
                   </div>
                   {!b.isActive && <span className="text-xs text-text-faint">(closed)</span>}
                 </div>
@@ -101,32 +104,32 @@ export default function BusinessPage() {
                   <>
                     {/* Level + progress */}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-muted">Lv.{b.level}</span>
+                      <span className="tnum text-xs font-medium text-text-muted">Lv.{b.level}</span>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-border">
                         <div
-                          className="h-full rounded-full bg-primary transition-all"
+                          className="h-full rounded-full bg-primary transition-all glow-primary"
                           style={{ width: `${(b.level / 10) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-text-faint">/10</span>
+                      <span className="tnum text-[10px] text-text-faint">/10</span>
                     </div>
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div>
-                        <span className="text-text-muted">Revenue</span>
+                        <span className="text-text-faint">Revenue</span>
                         <div className="tnum font-medium text-profit">
                           +<Money value={b.revenuePerTick} />
                         </div>
                       </div>
                       <div>
-                        <span className="text-text-muted">Expense</span>
+                        <span className="text-text-faint">Expense</span>
                         <div className="tnum font-medium text-loss">
                           -<Money value={b.expensePerTick} />
                         </div>
                       </div>
                       <div>
-                        <span className="text-text-muted">Profit</span>
+                        <span className="text-text-faint">Profit</span>
                         <div className={cn("tnum font-medium", profit >= 0 ? "text-profit" : "text-loss")}>
                           <Money value={profit} signed />
                         </div>
@@ -136,29 +139,29 @@ export default function BusinessPage() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-text-muted">{b.employeeCount} employees</span>
                       {b.level < 10 && (
-                        <span className="text-text-faint">
+                        <span className="tnum text-text-faint">
                           Upgrade: <Money value={upgradeCost(b.type, b.level)} compact />
                         </span>
                       )}
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {b.level < 10 && (
                         <button onClick={() => act(b.id, "upgrade")}
-                          className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-text hover:bg-soft"
+                          className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text transition-colors hover:bg-soft"
                         ><ArrowUp className="h-3 w-3" /> Upgrade</button>
                       )}
                       <button onClick={() => act(b.id, "hire")}
-                        className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-text hover:bg-soft"
+                        className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text transition-colors hover:bg-soft"
                       ><UserPlus className="h-3 w-3" /> Hire</button>
                       {b.employeeCount > 1 && (
                         <button onClick={() => act(b.id, "fire")}
-                          className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-text hover:bg-loss-soft"
+                          className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text transition-colors hover:bg-loss-soft"
                         ><UserMinus className="h-3 w-3" /> Fire</button>
                       )}
                       <button onClick={() => act(b.id, "liquidate")}
-                        className="flex items-center gap-1 rounded border border-loss/40 px-2 py-1 text-[11px] text-loss hover:bg-loss-soft"
+                        className="flex items-center gap-1 rounded-full border border-loss/40 px-3 py-1 text-[11px] font-medium text-loss transition-colors hover:bg-loss-soft"
                       >Liquidate</button>
                     </div>
                   </>
@@ -171,33 +174,46 @@ export default function BusinessPage() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCreate(false)}>
-          <div className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            className="glass-panel flex w-full max-w-md flex-col gap-3 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-text">New Business</h2>
-              <button onClick={() => setShowCreate(false)} className="rounded p-1 text-text-muted hover:bg-soft"><X className="h-4 w-4" /></button>
+              <h2 className="text-lg font-black text-text">New Business</h2>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="rounded-md p-1 text-text-muted transition-colors hover:bg-soft hover:text-text"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             <div>
-              <label className="text-xs text-text-muted">Business Name</label>
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Business Name</label>
               <Input placeholder="My Business" value={createName} onChange={(e) => setCreateName(e.target.value)} />
             </div>
 
             <div>
-              <label className="text-xs text-text-muted">Type</label>
-              <div className="mt-1 flex flex-wrap gap-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Type</label>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {BUSINESS_TYPES.map((bt) => (
-                  <button key={bt.code}
+                  <button
+                    key={bt.code}
                     onClick={() => setCreateType(bt.code)}
                     className={cn(
-                      "rounded-md border px-2.5 py-2 text-left text-xs transition-colors",
-                      createType === bt.code ? "border-primary bg-primary-soft" : "border-border hover:bg-soft",
+                      "rounded-lg border p-3 text-left text-xs transition-all",
+                      createType === bt.code
+                        ? "border-primary bg-primary/10 glow-primary"
+                        : "border-border hover:bg-soft hover:border-border-strong",
                     )}
                   >
-                    <div className="font-medium text-text">{bt.label}</div>
+                    <div className="font-bold text-text">{bt.label}</div>
                     <div className="mt-0.5 text-text-faint">{bt.description}</div>
-                    <div className="mt-1 text-text-muted">
+                    <div className="tnum mt-1 text-text-muted">
                       Cost: <Money value={bt.setupCost} compact /> | Revenue: <Money value={bt.baseRevenue} />/tick
                     </div>
                   </button>
@@ -205,7 +221,7 @@ export default function BusinessPage() {
               </div>
             </div>
 
-            <Button onClick={create} loading={submitting}>Create Business</Button>
+            <Button onClick={create} loading={submitting} className="mt-2">Create Business</Button>
           </div>
         </div>
       )}

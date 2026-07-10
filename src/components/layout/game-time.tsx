@@ -44,7 +44,7 @@ export function GameTime({ initialGameTimeMs }: Props) {
   return (
     <div className="flex items-center gap-1.5 text-xs text-text-muted">
       <Clock className="h-3.5 w-3.5" />
-      <span className="tabular-nums">{display}</span>
+      <span className="tnum">{display}</span>
     </div>
   );
 }

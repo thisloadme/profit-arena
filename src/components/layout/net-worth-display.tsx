@@ -39,8 +39,8 @@ export function NetWorthDisplay({ initial }: Props) {
 
   return (
     <div className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-text-muted">Net Worth</span>
-      <Money value={netWorth} compact className="text-base font-semibold text-text" />
+      <span className="text-[10px] uppercase tracking-widest text-text-faint">Net Worth</span>
+      <Money value={netWorth} compact className="tnum text-base font-semibold text-text" />
       <PercentChange value={changePct} className="text-[11px]" />
     </div>
   );

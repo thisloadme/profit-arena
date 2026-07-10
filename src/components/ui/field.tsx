@@ -40,13 +40,13 @@ export function FormCard({
   className?: string;
 }) {
   return (
-    <div className={cn("card-compact mx-auto w-full max-w-md p-6", className)}>
-      <header className="mb-4 flex flex-col gap-1">
-        <h1 className="text-xl font-bold text-primary">{title}</h1>
+    <div className={cn("glass-panel mx-auto w-full max-w-md p-6 sm:p-8", className)}>
+      <header className="mb-5 flex flex-col gap-1">
+        <h1 className="text-2xl font-black tracking-tight text-text">{title}</h1>
         {subtitle && <p className="text-sm text-text-muted">{subtitle}</p>}
       </header>
       <div className="flex flex-col gap-3">{children}</div>
-      {footer && <div className="mt-4 text-center text-sm text-text-muted">{footer}</div>}
+      {footer && <div className="mt-5 text-center text-sm text-text-muted">{footer}</div>}
     </div>
   );
 }

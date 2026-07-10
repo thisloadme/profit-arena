@@ -18,10 +18,10 @@ const TYPE_LABELS: Record<string, string> = {
   LOAN_PAYMENT: "Loan Payment", LOAN_INTEREST: "Loan Interest",
 };
 const TYPE_COLORS: Record<string, string> = {
-  BUY: "#DC2626", SELL: "#16A34A", SALARY: "#16A34A",
-  BUSINESS_REVENUE: "#16A34A", EXPENSE: "#DC2626",
-  LOAN_GIVEN: "#DC2626", LOAN_RECEIVED: "#16A34A",
-  LOAN_PAYMENT: "#DC2626", LOAN_INTEREST: "#D97706",
+  BUY: "var(--loss)", SELL: "var(--profit)", SALARY: "var(--profit)",
+  BUSINESS_REVENUE: "var(--profit)", EXPENSE: "var(--loss)",
+  LOAN_GIVEN: "var(--loss)", LOAN_RECEIVED: "var(--profit)",
+  LOAN_PAYMENT: "var(--loss)", LOAN_INTEREST: "var(--warning)",
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -42,58 +42,71 @@ export default function ReportsPage() {
   }, [year, month]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-primary">Financial Report</h1>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      <header className="mb-5 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+            Monthly Statement
+          </p>
+          <h1 className="mt-0.5 text-2xl font-bold text-text">Financial Report</h1>
+        </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => window.print()}
-            className="rounded border border-border bg-card px-2.5 py-1.5 text-xs text-text-muted hover:bg-soft">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-muted transition-colors hover:bg-soft hover:text-text"
+          >
             🖨️ PDF
           </button>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-            className="h-8 rounded border border-border bg-card px-2 text-xs text-text outline-none">
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="h-8 rounded-full border border-border bg-surface-lowest/60 px-3 text-xs text-text outline-none focus-ring"
+          >
             {[2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))}
-            className="h-8 rounded border border-border bg-card px-2 text-xs text-text outline-none">
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="h-8 rounded-full border border-border bg-surface-lowest/60 px-3 text-xs text-text outline-none focus-ring"
+          >
             {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
           </select>
         </div>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="glass-panel flex items-center justify-center py-12">
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-48 mx-auto" />
-            <Skeleton className="h-4 w-32 mx-auto" />
+            <Skeleton className="mx-auto h-4 w-48" />
+            <Skeleton className="mx-auto h-4 w-32" />
           </div>
         </div>
       ) : !data ? (
-        <p className="py-8 text-center text-sm text-text-faint">No data.</p>
+        <p className="glass-panel py-12 text-center text-sm text-text-faint">No data.</p>
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="card-compact">
-              <span className="text-xs text-text-muted">Income</span>
-              <div className="tnum text-lg font-bold text-profit"><Money value={data.income} compact /></div>
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <div className="glass-panel p-4">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Income</span>
+              <div className="tnum mt-1 text-xl font-bold text-profit"><Money value={data.income} compact /></div>
             </div>
-            <div className="card-compact">
-              <span className="text-xs text-text-muted">Expenses</span>
-              <div className="tnum text-lg font-bold text-loss"><Money value={data.expense} compact /></div>
+            <div className="glass-panel p-4">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Expenses</span>
+              <div className="tnum mt-1 text-xl font-bold text-loss"><Money value={data.expense} compact /></div>
             </div>
-            <div className="card-compact">
-              <span className="text-xs text-text-muted">Net</span>
-              <div className={cn("tnum text-lg font-bold", data.net >= 0 ? "text-profit" : "text-loss")}>
+            <div className="glass-panel p-4">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">Net</span>
+              <div className={cn("tnum mt-1 text-xl font-bold", data.net >= 0 ? "text-profit" : "text-loss")}>
                 <Money value={data.net} compact signed />
               </div>
             </div>
           </div>
 
           {/* Bar chart */}
-          <div className="card-compact">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">By Category</h3>
-            <div className="h-48">
+          <div className="glass-panel mb-4 p-5">
+            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-text-faint">By Category</h3>
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.details}>
                   <XAxis dataKey="type" tick={{ fontSize: 9, fill: "var(--text-muted)" }}
@@ -101,11 +114,14 @@ export default function ReportsPage() {
                     tickFormatter={(v: string) => TYPE_LABELS[v] ?? v} />
                   <YAxis tick={{ fontSize: 9, fill: "var(--text-muted)" }} axisLine={false} tickLine={false}
                     tickFormatter={(v: number) => v.toLocaleString("en-US")} />
-                  <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
-                    formatter={(val: unknown) => [typeof val === "number" ? val.toLocaleString("en-US") : String(val), "Amount"]} />
-                  <Bar dataKey="total" radius={[3, 3, 0, 0]} maxBarSize={40}>
+                  <Tooltip
+                    cursor={{ fill: "var(--surface-highest)", opacity: 0.3 }}
+                    contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+                    formatter={(val: unknown) => [typeof val === "number" ? val.toLocaleString("en-US") : String(val), "Amount"]}
+                  />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={48}>
                     {data.details.map((d, i) => (
-                      <Cell key={i} fill={TYPE_COLORS[d.type] ?? "#3B82C4"} />
+                      <Cell key={i} fill={TYPE_COLORS[d.type] ?? "var(--accent)"} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -114,21 +130,21 @@ export default function ReportsPage() {
           </div>
 
           {/* Detail table */}
-          <div className="card-compact">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Details</h3>
+          <div className="glass-panel p-5">
+            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-text-faint">Details</h3>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-text-muted">
-                  <th className="px-2 py-1.5 text-left font-medium">Category</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Amount</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Count</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest text-text-faint">Category</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-widest text-text-faint">Amount</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-widest text-text-faint">Count</th>
                 </tr>
               </thead>
               <tbody>
                 {data.details.map((d) => (
-                  <tr key={d.type} className="border-b border-border last:border-0">
+                  <tr key={d.type} className="border-b border-border/60 last:border-0">
                     <td className="px-2 py-1.5 text-text">{TYPE_LABELS[d.type] ?? d.type}</td>
-                    <td className={cn("tnum px-2 py-1.5 text-right font-medium", d.total >= 0 ? "text-profit" : "text-loss")}>
+                    <td className={cn("tnum px-2 py-1.5 text-right font-bold", d.total >= 0 ? "text-profit" : "text-loss")}>
                       <Money value={d.total} signed />
                     </td>
                     <td className="tnum px-2 py-1.5 text-right text-text-faint">{d.count}</td>

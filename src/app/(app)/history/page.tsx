@@ -74,25 +74,30 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-primary">Transaction History</h1>
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      <header className="mb-5 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+            Ledger
+          </p>
+          <h1 className="mt-0.5 text-2xl font-bold text-text">Transaction History</h1>
+        </div>
         <a
           href={csvUrl()}
           download
-          className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs text-text-muted hover:bg-soft"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-muted transition-colors hover:bg-soft hover:text-text"
         >
           <Download className="h-3.5 w-3.5" /> CSV
         </a>
       </header>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2">
+      <div className="glass-panel mb-4 flex flex-wrap items-center gap-2 p-3">
         <Filter className="h-3.5 w-3.5 text-text-muted" />
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="h-8 rounded border border-border bg-card px-2 text-xs text-text outline-none"
+          className="h-8 rounded-full border border-border bg-surface-lowest/60 px-3 text-xs text-text outline-none focus-ring"
         >
           <option value="ALL">All types</option>
           {Object.entries(TYPE_LABELS).map(([k, v]) => (
@@ -117,53 +122,53 @@ export default function HistoryPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="glass-panel flex items-center justify-center py-12">
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-64 mx-auto" />
-            <Skeleton className="h-4 w-48 mx-auto" />
+            <Skeleton className="mx-auto h-4 w-64" />
+            <Skeleton className="mx-auto h-4 w-48" />
           </div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="card-compact flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
+        <div className="glass-panel flex flex-col items-center gap-2 py-12 text-sm text-text-faint">
           <p>No transactions yet.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="glass-panel overflow-x-auto p-0">
           <div className="max-h-[60vh] overflow-y-auto">
             <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border bg-bg-base">
-                <th className="px-3 py-2 text-left font-medium text-text-muted">Type</th>
-                <th className="px-3 py-2 text-left font-medium text-text-muted">Description</th>
-                <th className="px-3 py-2 text-right font-medium text-text-muted">Amount</th>
-                <th className="hidden px-3 py-2 text-right font-medium text-text-muted sm:table-cell">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-soft/50">
-                  <td className="px-3 py-2">
-                    <span className={cn("rounded bg-soft px-1.5 py-0.5 font-medium", TYPE_COLORS[r.type])}>
-                      {TYPE_LABELS[r.type] ?? r.type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-text">{r.description}</td>
-                  <td className={cn("tnum px-3 py-2 text-right font-medium", r.amount >= 0 ? "text-profit" : "text-loss")}>
-                    <Money value={r.amount} signed />
-                  </td>
-                  <td className="hidden px-3 py-2 text-right text-text-faint sm:table-cell">
-                    {new Date(r.createdAt).toLocaleDateString("en-US")}
-                  </td>
+              <thead className="sticky top-0">
+                <tr className="border-b border-border bg-surface-lowest/80 backdrop-blur-sm">
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-text-faint">Type</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-text-faint">Description</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-text-faint">Amount</th>
+                  <th className="hidden px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-text-faint sm:table-cell">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-border/60 last:border-0 transition-colors hover:bg-soft/30">
+                    <td className="px-4 py-2.5">
+                      <span className={cn("rounded-full bg-soft px-2 py-0.5 text-[10px] font-semibold", TYPE_COLORS[r.type])}>
+                        {TYPE_LABELS[r.type] ?? r.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-text">{r.description}</td>
+                    <td className={cn("tnum px-4 py-2.5 text-right font-bold", r.amount >= 0 ? "text-profit" : "text-loss")}>
+                      <Money value={r.amount} signed />
+                    </td>
+                    <td className="tnum hidden px-4 py-2.5 text-right text-text-faint sm:table-cell">
+                      {new Date(r.createdAt).toLocaleDateString("en-US")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {nextCursor && (
-        <div className="text-center">
+        <div className="mt-4 text-center">
           <Button variant="secondary" size="sm" onClick={() => load(nextCursor)} loading={loading}>
             Load more
           </Button>

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { themeInitScript, THEME_COOKIE } from "@/components/theme-script";
+import { cookies } from "next/headers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,28 +18,41 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Financial Simulation Arena",
+  title: "Money Carnival",
   description: "Build wealth from zero. Trade markets, run businesses, and manage loans in a risk-free financial simulation.",
   manifest: "/manifest.json",
-  icons: { icon: "/icon.svg" },
+  icons: [
+    { rel: "icon", url: "/favicon.png", sizes: "32x32" },
+    { rel: "apple-touch-icon", url: "/icon-192.png", sizes: "192x192" },
+  ],
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1E3A5F",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0B" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+  ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Read theme cookie server-side so the very first paint has the right class.
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(THEME_COOKIE)?.value;
+  const theme = raw === "light" || raw === "dark" ? raw : "dark";
+
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${theme} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-bg text-text">
         {children}

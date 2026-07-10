@@ -15,16 +15,14 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   shortcut: string;
-  /** Marks upcoming routes (rendered but show "segera" badge). */
-  soon?: boolean;
 };
 
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "d" },
-  { href: "/market", label: "Market", icon: CandlestickChart, shortcut: "m", soon: true },
-  { href: "/portfolio", label: "Portfolio", icon: Briefcase, shortcut: "p", soon: true },
-  { href: "/business", label: "Business", icon: Store, shortcut: "b", soon: true },
-  { href: "/lending", label: "Lending", icon: HandCoins, shortcut: "l", soon: true },
+  { href: "/market", label: "Market", icon: CandlestickChart, shortcut: "m" },
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase, shortcut: "p" },
+  { href: "/business", label: "Business", icon: Store, shortcut: "b" },
+  { href: "/lending", label: "Lending", icon: HandCoins, shortcut: "l" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, shortcut: "k" },
   { href: "/history", label: "History", icon: History, shortcut: "h" },
   { href: "/reports", label: "Reports", icon: BarChart3, shortcut: "r" },

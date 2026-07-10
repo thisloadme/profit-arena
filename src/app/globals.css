@@ -1,34 +1,81 @@
 @import "tailwindcss";
 
 /*
- * Financial Simulation Arena — Light theme only (DESIGN.md v1.1).
- * Compact density, dimmed professional palette (no neon, WCAG AA).
+ * Financial Simulation Arena — Dual theme (DESIGN.md v2.0).
+ * Dark = default (Stitch "Financial Simulation Arena" system).
+ * Light = opt-in via .light class on <html>.
+ *
+ * All existing semantic tokens (--bg-card, --text-muted, --primary, etc.)
+ * are redefined per-theme so components that use bg-card / text-text-muted /
+ * border-border flip automatically when the theme class changes.
  */
 
-:root {
-  /* Surfaces — layered depth: 0=body, 1=card, 2=raised (modal/dropdown) */
+/* ============ DARK (default) ============ */
+:root,
+.dark {
+  /* Surfaces — Material 3 dark ladder */
+  --bg-base: #0a0a0b;            /* page background (near-black) */
+  --bg-card: #201f20;            /* surface-container */
+  --surface-raised: #2a2a2b;     /* surface-container-high */
+  --surface-highest: #353436;    /* surface-container-highest */
+  --surface-low: #1c1b1c;        /* surface-container-low */
+  --surface-lowest: #0e0e0f;     /* surface-container-lowest */
+  --border: #3c4a42;             /* outline-variant (green-tinted) */
+  --border-strong: #86948a;      /* outline */
+
+  /* Text */
+  --text: #e5e2e3;               /* on-surface */
+  --text-muted: #bbcabf;         /* on-surface-variant */
+  --text-faint: #86948a;         /* outline */
+
+  /* Brand — Stitch palette */
+  --primary: #4edea3;            /* emerald (primary-fixed-dim) */
+  --primary-hover: #10b981;      /* primary-container */
+  --primary-soft: rgba(78, 222, 163, 0.10);
+  --accent: #adc6ff;             /* electric blue secondary */
+  --on-primary: #003824;         /* dark text on emerald bg */
+
+  /* Semantic */
+  --profit: #4edea3;             /* same as primary — growth */
+  --profit-soft: rgba(78, 222, 163, 0.12);
+  --loss: #ffb4ab;               /* soft red on dark */
+  --loss-soft: rgba(255, 180, 171, 0.12);
+  --warning: #ffb95f;            /* amber */
+  --warning-soft: rgba(255, 185, 95, 0.12);
+  --info: #adc6ff;               /* same as accent */
+  --info-soft: rgba(173, 198, 255, 0.12);
+
+  /* Rings & glow */
+  --ring: #4edea3;
+  --glow-primary: rgba(78, 222, 163, 0.25);
+  --glow-accent: rgba(173, 198, 255, 0.20);
+
+  /* Shadows — depth on dark = subtle ambient + border glow */
+  --shadow-card: 0 0 0 1px rgba(78, 222, 163, 0.04);
+  --shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(78, 222, 163, 0.06);
+}
+
+/* ============ LIGHT (opt-in via .light) ============ */
+.light {
   --bg-base: #f8fafc;
   --bg-card: #ffffff;
   --surface-raised: #ffffff;
+  --surface-highest: #f1f5f9;
+  --surface-low: #f8fafc;
+  --surface-lowest: #ffffff;
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
 
-  /* Shadows for depth */
-  --shadow-card: 0 1px 3px 0 rgba(0,0,0,.04), 0 1px 2px -1px rgba(0,0,0,.06);
-  --shadow-raised: 0 4px 16px -2px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.06);
-
-  /* Text */
   --text: #0f172a;
   --text-muted: #64748b;
   --text-faint: #94a3b8;
 
-  /* Brand — dimmed, ≤70% saturation */
-  --primary: #1e3a5f;        /* deep blue */
+  --primary: #1e3a5f;
   --primary-hover: #16314f;
-  --primary-soft: #e8eef5;   /* tint background */
-  --accent: #3b82c4;         /* steel cyan */
+  --primary-soft: #e8eef5;
+  --accent: #3b82c4;
+  --on-primary: #ffffff;
 
-  /* Semantic */
   --profit: #16a34a;
   --profit-soft: #dcfce7;
   --loss: #dc2626;
@@ -38,14 +85,23 @@
   --info: #4f46e5;
   --info-soft: #e0e7ff;
 
-  /* Rings & focus */
   --ring: #3b82c4;
+  --glow-primary: rgba(30, 58, 95, 0.12);
+  --glow-accent: rgba(59, 130, 196, 0.15);
+
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-raised: 0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
 }
 
+/* ============ Tailwind v4 theme mapping ============ */
 @theme inline {
   --color-bg: var(--bg-base);
+  --color-bg-base: var(--bg-base);
   --color-card: var(--bg-card);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-highest: var(--surface-highest);
+  --color-surface-low: var(--surface-low);
+  --color-surface-lowest: var(--surface-lowest);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
@@ -55,6 +111,7 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-accent: var(--accent);
+  --color-on-primary: var(--on-primary);
   --color-profit: var(--profit);
   --color-profit-soft: var(--profit-soft);
   --color-loss: var(--loss);
@@ -72,12 +129,13 @@
   --text-xl: 20px;
   --text-2xl: 24px;
   --text-3xl: 30px;
+  --text-display: 48px;
 
   /* Fonts */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  /* Radii — small, modern fintech */
+  /* Radii — tight, modern fintech */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -100,7 +158,7 @@ html, body {
   letter-spacing: -0.01em;
 }
 
-/* Utility helpers — semantic colors */
+/* ============ Semantic utility classes ============ */
 .text-profit { color: var(--profit); }
 .text-loss   { color: var(--loss); }
 .text-warning { color: var(--warning); }
@@ -110,6 +168,9 @@ html, body {
 
 .bg-card { background: var(--bg-card); }
 .bg-soft { background: var(--primary-soft); }
+.bg-surface-lowest { background: var(--surface-lowest); }
+.bg-surface-low { background: var(--surface-low); }
+.bg-surface-highest { background: var(--surface-highest); }
 .border-default { border-color: var(--border); }
 
 /* Compact spacing utilities */
@@ -118,7 +179,7 @@ html, body {
 .gap-tight { gap: 8px; }
 .gap-section { gap: 16px; }
 
-/* Compact card */
+/* ============ Cards ============ */
 .card-compact {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -127,12 +188,43 @@ html, body {
   box-shadow: var(--shadow-card);
 }
 
+/* Glassmorphism panel — the signature "arena" surface (Stitch). */
+.glass-panel {
+  background: color-mix(in srgb, var(--bg-card) 65%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  position: relative;
+  box-shadow: var(--shadow-card);
+}
+/* Top-edge highlight: a 1px gradient line that reads as a sheen on glass. */
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 35%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Glow utilities for "live" / interactive emphasis. */
+.glow-primary { box-shadow: 0 0 24px var(--glow-primary); }
+.glow-accent { box-shadow: 0 0 24px var(--glow-accent); }
+.text-glow-primary { text-shadow: 0 0 24px var(--glow-primary); }
+
 /* Interactive card (clickable) */
 .card-interactive {
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .card-interactive:hover {
-  border-color: var(--border-strong);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
   box-shadow: var(--shadow-raised);
 }
 
@@ -141,6 +233,13 @@ html, body {
   outline: none;
   box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--ring);
 }
+
+/* Floating animation for hero mockups / decorative elements. */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
 
 /* Scrollbar (subtle, compact) */
 * {

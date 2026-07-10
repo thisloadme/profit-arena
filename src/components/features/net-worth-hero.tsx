@@ -12,26 +12,25 @@ type Props = {
   className?: string;
 };
 
+/**
+ * Net Worth hero — the centerpiece of the dashboard.
+ * Glass panel + background sparkline + milestone conic-gradient ring.
+ * Stitch dashboard style: taller, generous padding, glow on the chart.
+ */
 export function NetWorthHero({ netWorth, prevNetWorth, sparkline, className }: Props) {
   const changePct =
     prevNetWorth > 0 ? ((netWorth - prevNetWorth) / prevNetWorth) * 100 : 0;
   const up = changePct >= 0;
   const color = up ? "var(--profit)" : "var(--loss)";
 
-  // ponytail: milestone ring — next million as "100%", simple visual gauge
+  // ponytail: milestone ring — next power of 10 as "100%", simple visual gauge.
   const nextMilestone = Math.pow(10, Math.floor(Math.log10(Math.abs(netWorth || 1))) + 1);
   const ringPct = Math.min(100, (netWorth / nextMilestone) * 100);
 
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-lg border p-4",
-        "border-border bg-gradient-to-r from-card to-bg-base",
-        className,
-      )}
-    >
-      {/* Semi-transparent sparkline as background */}
-      <div className="absolute inset-0 opacity-[0.12]">
+    <div className={cn("glass-panel relative overflow-hidden p-6", className)}>
+      {/* Background sparkline — faint, fills the whole panel */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={sparkline} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <defs>
@@ -52,28 +51,38 @@ export function NetWorthHero({ netWorth, prevNetWorth, sparkline, className }: P
         </ResponsiveContainer>
       </div>
 
-      <div className="relative z-10 flex items-center gap-4">
+      {/* Glow halo behind the ring, reuses profit/loss color */}
+      <div
+        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl"
+        style={{ background: up ? "var(--glow-primary)" : "rgba(255,180,171,0.2)" }}
+        aria-hidden
+      />
+
+      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         {/* Milestone ring */}
         <div
-          className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
+          className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
           style={{
             background: `conic-gradient(${color} ${ringPct}%, var(--border) ${ringPct}% 100%)`,
+            boxShadow: `0 0 24px ${up ? "var(--glow-primary)" : "rgba(255,180,171,0.25)"}`,
           }}
         >
-          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-card text-[10px] font-bold text-text-muted">
-            {ringPct.toFixed(0)}%
+          <div className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-card">
+            <span className="tnum text-sm font-bold text-text">{ringPct.toFixed(0)}%</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wider text-text-muted">Net Worth</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+            Net Worth
+          </span>
           <div className="flex items-baseline gap-3">
-            <Money value={netWorth} compact className="text-3xl font-bold text-text" />
+            <Money value={netWorth} compact className="tnum text-3xl font-black text-text sm:text-4xl" />
             <PercentChange value={changePct} className="text-base" />
           </div>
-          <div className="flex gap-4 text-xs text-text-faint">
-            <span>30d · {sparkline.length} points</span>
-            <span>Next: <Money value={nextMilestone} compact /></span>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
+            <span className="tnum">30d · {sparkline.length} pts</span>
+            <span>Next milestone: <Money value={nextMilestone} compact className="tnum" /></span>
           </div>
         </div>
       </div>
