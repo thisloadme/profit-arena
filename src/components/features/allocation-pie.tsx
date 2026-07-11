@@ -40,12 +40,12 @@ export function AllocationPie({ allocation, className }: Props) {
   const hasAssets = total > 0;
 
   return (
-    <div className={cn("glass-panel p-4", className)}>
+    <div className={cn("glass-panel flex flex-col p-4", className)}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
         Asset Allocation
       </h3>
       {!hasAssets ? (
-        <div className="flex flex-col items-center justify-center py-8 text-xs text-text-faint">
+        <div className="flex flex-1 flex-col items-center justify-center py-4 text-xs text-text-faint">
           <p>No assets yet.</p>
           <p className="mt-1">
             <a href="/market" className="text-accent hover:underline">
@@ -54,8 +54,8 @@ export function AllocationPie({ allocation, className }: Props) {
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-4">
-          <div className="h-36 w-36 shrink-0">
+        <div className="flex flex-1 items-center gap-4">
+          <div className="h-28 w-28 shrink-0 sm:h-36 sm:w-36">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -64,8 +64,8 @@ export function AllocationPie({ allocation, className }: Props) {
                   nameKey="type"
                   cx="50%"
                   cy="50%"
-                  innerRadius={35}
-                  outerRadius={58}
+                  innerRadius={30}
+                  outerRadius={50}
                   minAngle={3}
                 >
                   {allocation.map((_, i) => (

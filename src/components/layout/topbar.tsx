@@ -18,11 +18,13 @@ type TickerState = { running: boolean; gameTimeMs: number };
 export function TopBar({
   user,
   netWorth,
+  cash,
   changePct,
   ticker,
 }: {
   user: { username: string };
   netWorth: number;
+  cash: number;
   changePct: number;
   ticker: TickerState;
 }) {
@@ -53,11 +55,11 @@ export function TopBar({
         <Menu className="h-5 w-5" />
       </button>
 
-      <NetWorthDisplay initial={{ netWorth, changePct }} />
-
       <GameTime initialGameTimeMs={ticker.gameTimeMs} />
 
       <div className="flex-1" />
+
+      <NetWorthDisplay initial={{ netWorth, changePct, cash }} />
 
       <NotificationBell />
 

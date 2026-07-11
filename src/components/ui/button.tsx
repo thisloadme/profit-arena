@@ -35,6 +35,7 @@ export function Button({
 }: Props) {
   return (
     <button
+      type="button"
       {...rest}
       disabled={disabled || loading}
       className={cn(

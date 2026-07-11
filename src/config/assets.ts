@@ -20,11 +20,6 @@ export const ASSET_SEEDS: AssetSeed[] = [
   { symbol: "NVDA", name: "NVIDA",          type: AssetType.STOCK, basePrice: 880,  volatility: 0.025, trendFactor: 0.0008 },
   { symbol: "GOGL", name: "Goggle",         type: AssetType.STOCK, basePrice: 165,  volatility: 0.012, trendFactor: 0.0003 },
   { symbol: "MSFT", name: "Megasoft",       type: AssetType.STOCK, basePrice: 420,  volatility: 0.013, trendFactor: 0.0004 },
-  { symbol: "AMZN", name: "Amazonia",       type: AssetType.STOCK, basePrice: 178,  volatility: 0.018, trendFactor: 0.0005 },
-  { symbol: "META", name: "Metaverse Inc",  type: AssetType.STOCK, basePrice: 495,  volatility: 0.022, trendFactor: 0.0005 },
-  { symbol: "JPMC", name: "JPMorgan Chase", type: AssetType.STOCK, basePrice: 198,  volatility: 0.011, trendFactor: 0.0002 },
-  { symbol: "BCSK", name: "Berskshire",     type: AssetType.STOCK, basePrice: 410,  volatility: 0.008, trendFactor: 0.0002 },
-  { symbol: "DISN", name: "Disnney",        type: AssetType.STOCK, basePrice: 102,  volatility: 0.014, trendFactor: 0.0001 },
 
   // Crypto — high vol
   { symbol: "BTC",  name: "Bitcoin",        type: AssetType.CRYPTO, basePrice: 64_000, volatility: 0.04, trendFactor: 0.0007 },

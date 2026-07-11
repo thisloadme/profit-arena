@@ -38,10 +38,16 @@ export default function BusinessPage() {
     if (r.ok) setBizs(r.data.businesses);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    fetch("/api/business")
+      .then((r) => r.json())
+      .then((d) => { if (d.businesses) setBizs(d.businesses); })
+      .finally(() => setLoading(false));
+  }, []);
 
   async function create() {
-    if (!createName.trim()) return;
+    if (!createName.trim()) { toast.error("Business name is required"); return; }
     setSubmitting(true);
     const r = await apiFetch("/api/business", { body: { name: createName, type: createType } });
     setSubmitting(false);
@@ -221,7 +227,7 @@ export default function BusinessPage() {
               </div>
             </div>
 
-            <Button onClick={create} loading={submitting} className="mt-2">Create Business</Button>
+            <Button onClick={create} loading={submitting} disabled={!createName.trim()} className="mt-2">Create Business</Button>
           </div>
         </div>
       )}

@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { recordTrade } from "./price-engine";
 import { getIO } from "./socket-server";
+import { isMarketOpen } from "./tick-scheduler";
 
 /**
  * Check all PENDING limit orders against current market prices.
  * Executes those whose conditions are met, then broadcasts.
+ *
+ * Two order shapes share this table:
+ *  - limitPrice set  → classic limit order, matches when price crosses, 24/7.
+ *  - limitPrice null → queued MARKET order for STOCK placed while the market
+ *    was closed; fills at the next open price, no price condition.
  *
  * ponytail: scans all pending orders per tick. For large order books,
  * index on (status, symbol) keeps it fast — at MVP scale, negligible.
@@ -29,6 +35,12 @@ export async function executeLimitOrders(): Promise<void> {
   for (const o of orders) {
     const m = priceMap.get(o.symbol);
     if (!m) continue; // asset no longer exists
+    // Queued market order (null limit): fills only when the stock market is open.
+    if (o.limitPrice === null) {
+      if (m.type === "STOCK" && !isMarketOpen("STOCK")) continue;
+      toExecute.push(o);
+      continue;
+    }
     if (o.type === "BUY" && m.price <= o.limitPrice) toExecute.push(o);
     if (o.type === "SELL" && m.price >= o.limitPrice) toExecute.push(o);
   }

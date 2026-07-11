@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { checkTradeLimit } from "@/lib/rate-limiter";
 import { GAME_CONFIG } from "@/config/game";
+import { isMarketOpen } from "@/server/engine/tick-scheduler";
 
 const buySchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -57,6 +58,23 @@ export async function POST(req: Request) {
       { error: `Insufficient balance. Need ${totalCost.toLocaleString("en-US")}` },
       { status: 422 },
     );
+  }
+
+  // Stocks only trade during market hours. When closed, a MARKET order is
+  // queued and fills at the next market-open price (real exchange behavior).
+  // Limit orders always route through /api/trade/limit and fill 24/7.
+  if (market.type === "STOCK" && !isMarketOpen("STOCK")) {
+    const order = await prisma.limitOrder.create({
+      // limitPrice null = queued market order (fills at next open).
+      // Cast for transition until prisma generate picks up the Float? change.
+      data: { userId: session.sub, symbol, type: "BUY", quantity, limitPrice: null as unknown as number },
+    });
+    return NextResponse.json({
+      ok: true,
+      queued: true,
+      orderId: order.id,
+      message: `Market closed. Buy order queued — executes at next open (${quantity} × ${symbol}).`,
+    });
   }
 
   // All good — do the atomic write.

@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <TopBar
           user={{ username: user.username }}
           netWorth={user.netWorth}
+          cash={user.cash}
           changePct={0}
           ticker={{ running: ticker.running, gameTimeMs: ticker.gameTimeMs }}
         />

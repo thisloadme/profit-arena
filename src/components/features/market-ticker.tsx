@@ -20,8 +20,8 @@ const TickerCell = memo(function TickerCell({
   changePct: number;
 }) {
   return (
-    <div className="rounded-md border border-border bg-bg-base px-3 py-2">
-      <div className="text-xs font-medium text-text-muted">{sym}</div>
+    <div className="min-w-0 rounded-md border border-border bg-bg-base px-3 py-2">
+      <div className="truncate text-xs font-medium text-text-muted">{sym}</div>
       <div className="tnum text-sm font-semibold text-text">
         <Money value={price} compact />
       </div>

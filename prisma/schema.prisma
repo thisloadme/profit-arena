@@ -353,7 +353,7 @@ model LimitOrder {
   symbol     String
   type       OrderType
   quantity   Float
-  limitPrice Float
+  limitPrice Float?
   status     OrderStatus @default(PENDING)
   createdAt  DateTime    @default(now())
   executedAt DateTime?

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { checkTradeLimit } from "@/lib/rate-limiter";
 import { GAME_CONFIG } from "@/config/game";
+import { isMarketOpen } from "@/server/engine/tick-scheduler";
 
 const sellSchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
 
   const market = await prisma.marketData.findUnique({
     where: { symbol },
-    select: { currentPrice: true },
+    select: { currentPrice: true, type: true },
   });
   if (!market) return NextResponse.json({ error: "Asset not found" }, { status: 404 });
 
@@ -42,6 +43,22 @@ export async function POST(req: Request) {
       { error: `Don't have ${quantity} × ${symbol}. Only ${asset?.quantity ?? 0} available.` },
       { status: 422 },
     );
+  }
+
+  // Stocks only trade during market hours. When closed, a MARKET sell is
+  // queued and fills at the next market-open price. Limit sells run 24/7.
+  if (market.type === "STOCK" && !isMarketOpen("STOCK")) {
+    const order = await prisma.limitOrder.create({
+      // limitPrice null = queued market order (fills at next open).
+      // Cast for transition until prisma generate picks up the Float? change.
+      data: { userId: session.sub, symbol, type: "SELL", quantity, limitPrice: null as unknown as number },
+    });
+    return NextResponse.json({
+      ok: true,
+      queued: true,
+      orderId: order.id,
+      message: `Market closed. Sell order queued — executes at next open (${quantity} × ${symbol}).`,
+    });
   }
 
   const totalCredit = market.currentPrice * quantity;

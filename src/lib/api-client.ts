@@ -6,7 +6,7 @@ export async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(url, {
-      method: opts?.method ?? "POST",
+      method: opts?.method ?? (opts?.body ? "POST" : "GET"),
       headers: opts?.body ? { "Content-Type": "application/json" } : undefined,
       body: opts?.body ? JSON.stringify(opts.body) : undefined,
       signal: opts?.signal,
