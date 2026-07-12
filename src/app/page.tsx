@@ -126,7 +126,7 @@ export default function LandingPage() {
         className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 py-20 text-center sm:px-6 lg:py-28 lg:px-10"
       >
         {/* Badge pill */}
-        <motion.div variants={fadeUp}>
+        {/*<motion.div variants={fadeUp}>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
@@ -134,7 +134,7 @@ export default function LandingPage() {
             </span>
             Live Simulation
           </span>
-        </motion.div>
+        </motion.div>*/}
 
         {/* Headline */}
         <motion.h1

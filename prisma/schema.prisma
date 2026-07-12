@@ -112,6 +112,7 @@ model Business {
   expensePerTick Float    @default(0)
   employeeCount  Int      @default(1)
   isActive       Boolean  @default(true)
+  salaryPerEmployee Float  @default(0) // 0 = use type default; player-tunable otherwise
   createdAt      DateTime @default(now())
   createdAtTick  Int      @default(0) // game tick when created
   updatedAt      DateTime @updatedAt

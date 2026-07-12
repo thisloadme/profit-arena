@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { getBusinessType, setupCost, revenueForLevel, expenseForLevel } from "@/config/businesses";
+import { getBusinessType, setupCost, revenueForLevel, expenseForLevel, effectiveWage } from "@/config/businesses";
 import { getTickerState } from "@/server/engine/tick-scheduler";
 
 const createSchema = z.object({
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
   );
 
   const ticker = getTickerState();
+  const wage = effectiveWage(type, 0); // default wage at creation
   const biz = await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: s.sub }, data: { cash: { decrement: cost } } });
     return tx.business.create({
@@ -40,8 +41,9 @@ export async function POST(req: Request) {
         name,
         type,
         revenuePerTick: revenueForLevel(type, 1),
-        expensePerTick: expenseForLevel(type, 1, 1),
+        expensePerTick: expenseForLevel({ type, level: 1, employees: 1, wage }),
         employeeCount: 1,
+        salaryPerEmployee: wage,
         createdAtTick: ticker.tickNumber,
       },
     });

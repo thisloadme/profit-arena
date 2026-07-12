@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getTickerState } from "@/server/engine/tick-scheduler";
 import { getSession } from "@/lib/session";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-config";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
@@ -14,10 +16,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession();
   if (!session?.sub) redirect("/login");
 
-  const user = await prisma.user.findUniqueOrThrow({
+  // Guard: a valid session whose user no longer exists (e.g. DB reset) must
+  // not 500 — clear the stale cookie and bounce to login.
+  const user = await prisma.user.findUnique({
     where: { id: session.sub },
     select: { username: true, netWorth: true, cash: true, totalAssets: true, totalDebt: true },
   });
+  if (!user) {
+    const store = await cookies();
+    store.delete(SESSION_COOKIE_NAME);
+    redirect("/login");
+  }
 
   const ticker = getTickerState();
 

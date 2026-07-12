@@ -53,3 +53,59 @@ export async function recomputeLeaderboard(tickNumber: number): Promise<Leaderbo
 export function getCachedLeaderboard(): LeaderboardRow[] | null {
   return cache?.global ?? null;
 }
+
+export type WeeklyRow = {
+  rank: number;
+  userId: string;
+  username: string;
+  gain: number;
+  netWorth: number;
+};
+
+export type LeaderboardSummary = {
+  totalPlayers: number;
+  totalWealth: number;
+  yourPercentile: number | null;
+};
+
+/**
+ * 7-day net-worth gain ranking, computed on demand from transactions.
+ * ponytail: no scheduler/writer for WEEKLY snapshots — compute on read.
+ * O(transactions in 7d) — fine for MVP scale.
+ */
+export async function getWeeklyLeaderboard(): Promise<WeeklyRow[]> {
+  const rows = await prisma.$queryRaw<
+    { userId: string; username: string; gain: bigint; networth: number }[]
+  >`
+    SELECT t."userId"::text AS "userId",
+           u.username,
+           COALESCE(SUM(t.amount), 0)::bigint AS gain,
+           COALESCE(u."netWorth", 0)::float AS networth
+    FROM transactions t
+    JOIN users u ON u.id = t."userId"
+    WHERE t."createdAt" >= NOW() - INTERVAL '7 days'
+    GROUP BY t."userId", u.username, u."netWorth"
+    ORDER BY gain DESC
+    LIMIT 50
+  `;
+  return rows.map((r, i) => ({
+    rank: i + 1,
+    userId: r.userId,
+    username: r.username,
+    gain: Number(r.gain),
+    netWorth: Number(r.networth),
+  }));
+}
+
+/** Aggregate summary stats for the leaderboard header strip. */
+export async function getLeaderboardSummary(): Promise<LeaderboardSummary> {
+  const agg = await prisma.user.aggregate({
+    _count: true,
+    _sum: { netWorth: true },
+  });
+  return {
+    totalPlayers: agg._count,
+    totalWealth: agg._sum.netWorth ?? 0,
+    yourPercentile: null, // filled by caller using cached rows
+  };
+}

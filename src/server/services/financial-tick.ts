@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { GAME_CONFIG } from "@/config/game";
-import { getBusinessType } from "@/config/businesses";
+import { getBusinessType, moraleFromWage, revenueMultiplierFromMorale, incidentChance, INCIDENT_REVENUE_MULT } from "@/config/businesses";
 import { gaussian } from "@/server/engine/rng";
 
 export type FinancialTickResult = {
@@ -33,7 +33,7 @@ export async function runFinancialTick(opts: {
       assets: { select: { symbol: true, quantity: true, currentPrice: true } },
       businesses: {
         where: { isActive: true },
-        select: { type: true, revenuePerTick: true, expensePerTick: true, createdAtTick: true },
+        select: { id: true, type: true, name: true, revenuePerTick: true, expensePerTick: true, createdAtTick: true, salaryPerEmployee: true },
       },
       employments: {
         where: { isActive: true },
@@ -55,7 +55,9 @@ export async function runFinancialTick(opts: {
     // Income
     const income = u.employments.reduce((s, e) => s + e.salaryPerTick, 0);
 
-    // Business revenue with volatility — can dip below expenses on bad ticks
+    // Business revenue: wage→morale→multiplier, plus volatility noise and
+    // discrete incident events (supply break, walkout) that slash a tick's revenue.
+    const bizIncidents: { bizName: string; loss: number }[] = [];
     const bizRevenue = u.businesses.reduce((s, b) => {
       const def = getBusinessType(b.type);
       let vol = def?.volatility ?? 0.2;
@@ -68,8 +70,22 @@ export async function runFinancialTick(opts: {
         vol *= 1 - reduction;
       }
 
-      const multiplier = Math.max(0, 1 + vol * gaussian());
-      return s + b.revenuePerTick * multiplier;
+      const morale = moraleFromWage(b.type, b.salaryPerEmployee ?? 0);
+      const moraleMult = revenueMultiplierFromMorale(morale);
+
+      // Gaussian noise around the morale-adjusted baseline.
+      const noise = Math.max(0, 1 + vol * gaussian());
+
+      // Discrete incident: rare, but morale 0 is ~2.7× riskier. When it hits,
+      // revenue for this tick is slashed to INCIDENT_REVENUE_MULT.
+      const incidentHit = Math.random() < incidentChance(b.type, b.salaryPerEmployee ?? 0);
+      let tickRevenue = b.revenuePerTick * moraleMult * noise;
+      if (incidentHit) {
+        const before = tickRevenue;
+        tickRevenue *= INCIDENT_REVENUE_MULT;
+        bizIncidents.push({ bizName: b.name, loss: before - tickRevenue });
+      }
+      return s + tickRevenue;
     }, 0);
     const bizExpense = u.businesses.reduce((s, b) => s + b.expensePerTick, 0);
 
@@ -89,6 +105,12 @@ export async function runFinancialTick(opts: {
 
     // Auto-repayment at month boundary
     const notifications: { title: string; message: string }[] = [];
+    for (const inc of bizIncidents) {
+      notifications.push({
+        title: "Business incident",
+        message: `${inc.bizName} hit a disruption this tick — revenue slashed ~${Math.round((1 - INCIDENT_REVENUE_MULT) * 100)}%.`,
+      });
+    }
     let creditScoreDelta = 0;
     const loansPaid: { id: string; remainingAmount: number; status: "ACTIVE" | "PAID" }[] = [];
 
