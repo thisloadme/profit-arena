@@ -123,7 +123,7 @@ export default function BusinessPage() {
         <div className="glass-panel flex flex-col items-center gap-2 py-16 text-center text-sm text-text-faint">
           <Briefcase className="h-10 w-10 opacity-40" />
           <p className="text-base font-medium text-text">No businesses yet</p>
-          <p>Start with a Cafe from $50,000 setup cost.</p>
+          <p>Start with a Street Food stall from $15,000 setup cost.</p>
           <Button size="sm" onClick={() => setShowCreate(true)} className="mt-2"><Plus className="h-3.5 w-3.5" /> New Business</Button>
         </div>
       ) : (

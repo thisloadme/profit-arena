@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -22,49 +22,82 @@ type Props = {
   className?: string;
 };
 
+type TimeframeId = "1d" | "1w" | "1M" | "1Y" | "ALL";
+
+const TIMEFRAMES: { id: TimeframeId; label: string }[] = [
+  { id: "1d", label: "1D" },
+  { id: "1w", label: "1W" },
+  { id: "1M", label: "1M" },
+  { id: "1Y", label: "1Y" },
+  { id: "ALL", label: "ALL" },
+];
+
 /**
  * Net Worth velocity — the centerpiece of the dashboard.
  * Prominent area chart fills the panel (not a faint background), with the
- * value + 30d change overlaid top-left. 30d range, theme-aware stroke.
+ * value + percent change overlaid top-left. Timeframe pills let the user
+ * switch between 1D / 1W / 1M / 1Y / ALL.
  *
- * Live: subscribes to `user:tick` and refetches `/api/me/stats` (same pattern
- * as the header NetWorthDisplay) so the value + sparkline tail update in real
- * time without a full page refresh.
+ * Default timeframe (1M) is server-rendered for instant first paint;
+ * switching pills fetches from the dashboard API.
  */
 export function NetWorthHero({ netWorth: initialNetWorth, prevNetWorth: initialPrev, sparkline: initialSpark, className }: Props) {
   const { socket } = useSocket();
-  const [netWorth, setNetWorth] = useState(initialNetWorth);
-  const [prevNetWorth, setPrevNetWorth] = useState(initialPrev);
-  const [sparkline, setSparkline] = useState(initialSpark);
+  const [timeframe, setTimeframe] = useState<TimeframeId>("1M");
 
+  // Data state: null means use server-provided initial props (1M default).
+  const [data, setData] = useState<{
+    netWorth: number;
+    sparkline: { date: string; value: number }[];
+    loading: boolean;
+  } | null>(null);
+
+  // Keep mounted ref so stale setState after unmount doesn't fire.
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
+  // Ref for current timeframe so the socket handler doesn't need it in deps.
+  const timeframeRef = useRef(timeframe);
+  timeframeRef.current = timeframe;
+
+  const fetchData = useCallback(async (tf: TimeframeId) => {
+    // ponytail: loading indicator via shared state; data replaces server props.
+    setData({ netWorth: initialNetWorth, sparkline: initialSpark, loading: true });
+    const res = await fetch(`/api/dashboard?timeframe=${tf}&t=${Date.now()}`, { cache: "no-store" });
+    if (!mountedRef.current) return;
+    if (!res.ok) { setData(null); return; }
+    const json = await res.json();
+    setData({ netWorth: json.netWorth, sparkline: json.sparkline, loading: false });
+  }, [initialNetWorth, initialSpark]);
+
+  // Re-fetch on timeframe change.
+  useEffect(() => {
+    if (timeframe === "1M") { setData(null); return; } // server render covers default
+    fetchData(timeframe);
+  }, [timeframe, fetchData]);
+
+  // Socket: refetch dashboard data for current timeframe on tick.
   useEffect(() => {
     if (!socket) return;
-    const handler = async () => {
-      const res = await fetch(`/api/me/stats?t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data: { netWorth: number; prevNetWorth: number } = await res.json();
-      setNetWorth(data.netWorth);
-      setPrevNetWorth(data.prevNetWorth || data.netWorth);
-      // ponytail: append today's value to the sparkline tail so the chart
-      // visually moves. Full 30d refetch is overkill per tick — a single-point
-      // push keeps it cheap. Replace with /api/me/sparkline when available.
-      setSparkline((prev) => {
-        if (prev.length === 0) return prev;
-        const todayKey = new Date().toISOString().slice(0, 10);
-        const next = prev.slice(-30);
-        const last = next[next.length - 1]!;
-        if (last.date === todayKey) next[next.length - 1] = { date: todayKey, value: data.netWorth };
-        else next.push({ date: todayKey, value: data.netWorth });
-        return [...next];
-      });
+    const handler = () => {
+      const tf = timeframeRef.current;
+      fetch(`/api/dashboard?timeframe=${tf}&t=${Date.now()}`, { cache: "no-store" })
+        .then((r) => r.ok ? r.json() : null)
+        .then((json) => {
+          if (!json || !mountedRef.current) return;
+          setData({ netWorth: json.netWorth, sparkline: json.sparkline, loading: false });
+        });
     };
     socket.on("user:tick", handler);
-    return () => {
-      socket.off("user:tick", handler);
-    };
+    return () => { socket.off("user:tick", handler); };
   }, [socket]);
 
-  const changePct = prevNetWorth > 0 ? ((netWorth - prevNetWorth) / prevNetWorth) * 100 : 0;
+  const activeData = data ?? { netWorth: initialNetWorth, sparkline: initialSpark, loading: false };
+  const { netWorth, sparkline, loading } = activeData;
+
+  const firstVal = sparkline[0]?.value ?? netWorth;
+  const lastVal = sparkline[sparkline.length - 1]?.value ?? netWorth;
+  const changePct = firstVal > 0 ? ((lastVal - firstVal) / firstVal) * 100 : 0;
   const up = changePct >= 0;
   const color = up ? "var(--profit)" : "var(--loss)";
 
@@ -82,9 +115,29 @@ export function NetWorthHero({ netWorth: initialNetWorth, prevNetWorth: initialP
       {/* Header row — overlaid value, not blocking chart */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
-            Net Worth Velocity · 30d
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-text-faint">
+              Net Worth Velocity
+            </span>
+            {/* Timeframe pills */}
+            <div className="flex gap-0.5 rounded-md border border-border bg-surface-lowest/40 p-0.5">
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf.id}
+                  onClick={() => setTimeframe(tf.id)}
+                  disabled={loading}
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase transition-colors",
+                    timeframe === tf.id
+                      ? "bg-primary text-white"
+                      : "text-text-faint hover:text-text hover:bg-soft",
+                  )}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-baseline gap-3">
             <Money value={netWorth} compact className="tnum text-3xl font-black text-text sm:text-4xl" />
             <PercentChange value={changePct} className="text-base" />

@@ -14,6 +14,9 @@ export function Toaster() {
           fontSize: "13px",
         },
       }}
+      // ponytail: accent border-left per type via inline override.
+      // Sonner merges variant-specific style on top of the base toastOptions.style.
+      className="toaster-group"
     />
   );
 }

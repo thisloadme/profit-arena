@@ -456,9 +456,9 @@ export default function PortfolioPage() {
           <div className="glass-panel flex min-h-0 flex-1 flex-col p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-sm font-bold text-text">
-                <span className="material-symbols-outlined text-warning text-base leading-none">
+                {/*<span className="material-symbols-outlined text-warning text-base leading-none">
                   account_balance
-                </span>
+                </span>*/}
                 Active Loans
               </h3>
               <span className="rounded bg-warning-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-warning">

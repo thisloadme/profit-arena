@@ -7,11 +7,19 @@ import { getActiveEvents } from "@/server/engine/event-engine";
  * Dashboard aggregation endpoint.
  * ponytail: single fetch, one round-trip per tick. Split when any sub-section
  * becomes a bottleneck (unlikely at MVP scale).
+ *
+ * ?timeframe=1d|1w|1M|1Y|ALL  — controls sparkline range & implicit prevNetWorth.
  */
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const uid = session.sub;
+
+  // ponytail: days-map for timeframe. ALL uses earliest txn date.
+  const { searchParams } = new URL(req.url);
+  const tf = searchParams.get("timeframe") ?? "1M";
+  const daysMap: Record<string, number | "ALL"> = { "1d": 1, "1w": 7, "1M": 30, "1Y": 365, "ALL": "ALL" };
+  const days = daysMap[tf] ?? 30;
 
   const [user, loans, events, txns, assetsWithPrice] = await Promise.all([
     prisma.user.findUniqueOrThrow({
@@ -25,11 +33,15 @@ export async function GET() {
       take: 5,
     }),
     getActiveEvents(),
-    // Daily cash-flow for last 30 days
+    // Daily cash-flow for N days (ALL = earliest txn → now)
     prisma.$queryRaw<{ day: Date; net: number }[]>`
       SELECT DATE("createdAt") as day, SUM(amount) as net
       FROM transactions
-      WHERE "userId" = ${uid}::uuid AND "createdAt" >= NOW() - INTERVAL '30 days'
+      WHERE "userId" = ${uid}::uuid
+        AND "createdAt" >= CASE
+          WHEN ${tf} = 'ALL' THEN (SELECT COALESCE(MIN("createdAt"), NOW() - INTERVAL '30 days') FROM transactions WHERE "userId" = ${uid}::uuid)
+          ELSE NOW() - (${days} || ' days')::INTERVAL
+        END
       GROUP BY day ORDER BY day
     `,
     prisma.asset.findMany({
@@ -57,10 +69,8 @@ export async function GET() {
     pnlPct: v.invested > 0 ? ((v.value - v.invested) / v.invested) * 100 : 0,
   }));
 
-  // Sparkline: compute running balance over the last 30 days.
-  // ponytail: start from (cash - Σ all txn amounts) and walk forward.
-  const now = new Date();
-  const thirtyAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  // Sparkline: compute running netWorth over the requested range.
+  // ponytail: rebase from (netWorth - Σ net) then walk forward per day.
   const txnsByDay = new Map<string, number>();
   let totalFromTxns = 0;
   for (const tx of txns as { day: Date; net: number }[]) {
@@ -68,12 +78,16 @@ export async function GET() {
     txnsByDay.set(key, (txnsByDay.get(key) ?? 0) + Number(tx.net));
     totalFromTxns += Number(tx.net);
   }
-  const baseCash = user.cash - totalFromTxns;
+  const baseNetWorth = user.netWorth - totalFromTxns;
+
+  const rangeDays = days === "ALL" ? Math.max(1, txnsByDay.size) : (days as number);
+  const now = new Date();
+  const startDate = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
   const sparkline: { date: string; value: number }[] = [];
-  for (let i = 30; i >= 0; i--) {
-    const d = new Date(thirtyAgo.getTime() + i * 24 * 60 * 60 * 1000);
+  for (let i = 0; i <= rangeDays; i++) {
+    const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
-    const running = baseCash + (txnsByDay.get(key) ?? 0);
+    const running = baseNetWorth + (txnsByDay.get(key) ?? 0);
     sparkline.push({ date: key, value: Math.round(running * 100) / 100 });
   }
 

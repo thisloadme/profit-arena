@@ -40,6 +40,19 @@ export type BusinessTypeDef = {
 
 export const BUSINESS_TYPES: BusinessTypeDef[] = [
   {
+    code: "STREET_FOOD",
+    label: "Street Food",
+    description: "Street stall. Minimal capital, modest but steady income.",
+    setupCost: 15_000,
+    baseRevenue: 30,
+    baseExpense: 12,
+    revenuePerLevel: 8,
+    expensePerLevel: 4,
+    maxLevel: 10,
+    volatility: 0.10,
+    baseSalary: 3,
+  },
+  {
     code: "CAFE",
     label: "Cafe",
     description: "Small specialty coffee cafe. Low capital, stable margins.",
@@ -207,4 +220,3 @@ function clamp(v: number, lo: number, hi: number): number {
 
 // Self-check moved out — config is imported by client bundles where `require`
 // and `module` don't exist. Verified manually during authoring; math is linear.
-

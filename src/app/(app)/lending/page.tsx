@@ -52,8 +52,9 @@ export default function LendingPage() {
   const [bankAmt, setBankAmt] = useState("");
   const [bankTenor, setBankTenor] = useState("6");
   const [submitting, setSubmitting] = useState(false);
+  const [repaying, setRepaying] = useState<string | null>(null);
 
-  // ponytail: load() is also called from event handlers (accept/bank/form) — keep it shared.
+  // ponytail: load() is also called from event handlers (accept/bank/form/repay) — keep it shared.
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -83,6 +84,17 @@ export default function LendingPage() {
     const r = await apiFetch("/api/bank", { method: "POST", body: { amount: Number(bankAmt), tenorMonths: Number(bankTenor) } });
     setSubmitting(false);
     if (r.ok) { toast.success("Bank loan disbursed!"); setBankAmt(""); load(); }
+    else toast.error(r.error);
+  }
+
+  async function repayLoan(id: string, amount?: number) {
+    setRepaying(id);
+    const r = await apiFetch("/api/loans/" + id + "/repay", {
+      method: "POST",
+      body: amount && amount > 0 ? { amount } : {},
+    });
+    setRepaying(null);
+    if (r.ok) { toast.success(amount && amount > 0 ? "Payment made!" : "Loan repaid!"); load(); }
     else toast.error(r.error);
   }
 
@@ -244,7 +256,15 @@ export default function LendingPage() {
               <div className="flex flex-col gap-2.5">
                 {[...given.map((l) => ({ l, kind: "given" as const })), ...taken.map((l) => ({ l, kind: "taken" as const }))]
                   .sort((a) => (a.l.status === "ACTIVE" ? -1 : 1))
-                  .map(({ l, kind }) => <ActivityRow key={`${kind}-${l.id}`} loan={l} kind={kind} />)}
+                  .map(({ l, kind }) => (
+                    <ActivityRow
+                      key={`${kind}-${l.id}`}
+                      loan={l}
+                      kind={kind}
+                      onRepay={kind === "taken" && l.status === "ACTIVE" ? (amt?: number) => repayLoan(l.id, amt) : undefined}
+                      repaying={repaying === l.id}
+                    />
+                  ))}
               </div>
             )}
           </section>
@@ -272,10 +292,19 @@ function Row({ k, v, accent }: { k: string; v: React.ReactNode; accent?: boolean
   );
 }
 
-function ActivityRow({ loan, kind }: { loan: Loan; kind: "given" | "taken" }) {
+function ActivityRow({ loan, kind, onRepay, repaying }: { loan: Loan; kind: "given" | "taken"; onRepay?: (amt?: number) => void; repaying?: boolean }) {
   const counterpart = kind === "given" ? loan.borrower?.username : loan.lender?.username;
   const label = kind === "given" ? "Lending" : "Debt";
   const isGiven = kind === "given";
+  const [repayAmt, setRepayAmt] = useState("");
+
+  // Schedule
+  // ponytail: simple straight-line amortization; no interest-on-interest.
+  const installment = loan.tenorMonths > 0 ? (loan.amount * (1 + loan.interestRate)) / loan.tenorMonths : 0;
+  const paidPrincipal = loan.amount - loan.remainingAmount;
+  const paymentsMade = installment > 0 ? Math.floor(paidPrincipal / installment) : 0;
+  const progressPct = loan.amount > 0 ? Math.min(100, Math.round((paidPrincipal / loan.amount) * 100)) : 0;
+
   return (
     <div className={cn("rounded-r border-l-4 bg-soft px-3 py-2.5", isGiven ? "border-primary" : "border-loss")}>
       <div className="mb-1 flex items-center justify-between">
@@ -286,9 +315,51 @@ function ActivityRow({ loan, kind }: { loan: Loan; kind: "given" | "taken" }) {
         <span className="text-xs font-semibold text-text">{counterpart ?? "—"}</span>
         <span className="tnum text-sm font-medium text-text"><Money value={loan.remainingAmount} compact /></span>
       </div>
-      <p className="mt-0.5 text-[10px] text-text-faint">
-        {(loan.interestRate * 100).toFixed(1)}% · {loan.tenorMonths} mo{loan.dueDate ? ` · due ${new Date(loan.dueDate).toLocaleDateString("en-US")}` : ""}
-      </p>
+      <div className="mt-0.5 flex items-center justify-between">
+        <span className="text-[10px] text-text-faint">
+          {(loan.interestRate * 100).toFixed(1)}% · {loan.tenorMonths} mo{loan.dueDate ? ` · due ${new Date(loan.dueDate).toLocaleDateString("en-US")}` : ""}
+        </span>
+      </div>
+
+      {/* Schedule progress for active loans */}
+      {loan.status === "ACTIVE" && installment > 0 && (
+        <div className="mt-1.5">
+          <div className="flex items-center justify-between text-[9px] text-text-faint">
+            <span>≈ <Money value={installment} compact />/mo</span>
+            <span>{paymentsMade}/{loan.tenorMonths} payments</span>
+          </div>
+          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-border">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Inline partial repayment */}
+      {onRepay && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <input
+            type="number"
+            min={1}
+            max={loan.remainingAmount}
+            placeholder="Amount"
+            value={repayAmt}
+            onChange={(e) => setRepayAmt(e.target.value)}
+            disabled={repaying}
+            className="tnum h-6 w-24 rounded border border-border bg-surface-lowest px-1.5 text-[11px] text-text outline-none placeholder:text-text-faint focus:border-primary/50"
+          />
+          <button
+            onClick={() => {
+              const amt = Number(repayAmt);
+              onRepay(amt > 0 && amt <= loan.remainingAmount ? amt : undefined);
+              if (amt > 0 && amt <= loan.remainingAmount) setRepayAmt("");
+            }}
+            disabled={repaying}
+            className="rounded bg-profit-soft px-2 py-0.5 text-[10px] font-semibold text-profit transition-colors hover:bg-profit-soft/70 disabled:opacity-50"
+          >
+            {repaying ? "..." : repayAmt && Number(repayAmt) >= loan.remainingAmount ? "Pay off" : "Repay"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

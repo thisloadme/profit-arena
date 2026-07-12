@@ -260,3 +260,17 @@ html, body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============ Toast accent: left border per type ============ */
+.toaster-group [data-sonner-toast][data-type="success"] {
+  border-left: 3px solid var(--profit) !important;
+}
+.toaster-group [data-sonner-toast][data-type="error"] {
+  border-left: 3px solid var(--loss) !important;
+}
+.toaster-group [data-sonner-toast][data-type="info"] {
+  border-left: 3px solid var(--info) !important;
+}
+.toaster-group [data-sonner-toast][data-type="warning"] {
+  border-left: 3px solid var(--warning) !important;
+}

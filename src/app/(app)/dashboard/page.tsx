@@ -71,7 +71,7 @@ export default async function DashboardPage() {
   const now = new Date();
   const thirtyAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sparkline: { date: string; value: number }[] = [];
-  for (let i = 30; i >= 0; i--) {
+  for (let i = 0; i <= 30; i++) {
     const d = new Date(thirtyAgo.getTime() + i * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
     const running = baseNetWorth + (txnsByDay.get(key) ?? 0);
