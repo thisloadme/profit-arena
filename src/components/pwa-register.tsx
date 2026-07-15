@@ -45,7 +45,7 @@ export function PwaRegister() {
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 mx-auto max-w-sm rounded-lg border border-border bg-card p-3 shadow-raised sm:left-auto sm:right-4">
-      <p className="text-xs font-medium text-text">Install Money Carnival for the best experience</p>
+      <p className="text-xs font-medium text-text">Install Market Arena for the best experience</p>
       <div className="mt-2 flex gap-2">
         <button onClick={install} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:bg-primary-hover">
           Install

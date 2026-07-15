@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { SplashScreen } from "@/components/splash-screen";
 import { themeInitScript, THEME_COOKIE } from "@/components/theme-script";
 import { cookies } from "next/headers";
 
@@ -18,8 +19,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Money Carnival",
-  description: "Build wealth from zero. Trade markets, run businesses, and manage loans in a risk-free financial simulation.",
+  title: "Market Arena",
+  description:
+    "Market Arena — the financial simulation arena. Trade live markets, run businesses, lend, borrow, and climb the leaderboard with zero real-world risk.",
   manifest: "/manifest.json",
   icons: [
     { rel: "icon", url: "/favicon.png", sizes: "32x32" },
@@ -55,6 +57,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-bg text-text">
+        <SplashScreen />
         {children}
         <PwaRegister />
       </body>

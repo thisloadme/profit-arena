@@ -1,7 +1,7 @@
 {
-  "name": "Money Carnival",
-  "short_name": "Carnival",
-  "description": "Game simulasi finansial multiplayer — belajar literasi keuangan lewat pasar, bisnis, dan investasi.",
+  "name": "Market Arena",
+  "short_name": "MarketArena",
+  "description": "Financial simulation arena — trade live markets, run businesses, lend, borrow, and climb the leaderboard with zero real-world risk.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0A0A0B",

@@ -7,7 +7,8 @@ const updateSchema = z.object({
   avatarUrl: z.string().url().max(512).optional().nullable(),
   bio: z.string().max(280).optional().nullable(),
   location: z.string().max(100).optional().nullable(),
-  riskProfile: z.enum(["CONSERVATIVE", "MODERATE", "AGGRESSIVE"]).optional(),
+  financialStatus: z.enum(["STRUGGLING", "STABLE", "COMFORTABLE", "WEALTHY"]).optional(),
+  financialStatusManual: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -17,7 +18,13 @@ export async function GET() {
   const [user, profile] = await Promise.all([
     prisma.user.findUnique({
       where: { id: s.sub },
-      select: { username: true, email: true, riskProfile: true, createdAt: true },
+      select: {
+        username: true,
+        email: true,
+        financialStatus: true,
+        financialStatusManual: true,
+        createdAt: true,
+      },
     }),
     prisma.userProfile.findUnique({ where: { userId: s.sub } }),
   ]);
@@ -35,17 +42,23 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: body.error.issues[0]?.message ?? "Invalid input" }, { status: 422 });
   }
 
-  const { riskProfile, ...profileFields } = body.data;
+  const { financialStatus, financialStatusManual, ...profileFields } = body.data;
   const hasProfileFields = Object.values(profileFields).some((v) => v !== undefined);
-  const hasRisk = riskProfile !== undefined;
+  const hasStatus = financialStatus !== undefined || financialStatusManual !== undefined;
 
-  if (!hasProfileFields && !hasRisk) {
+  if (!hasProfileFields && !hasStatus) {
     return NextResponse.json({ error: "No fields to update" }, { status: 422 });
   }
 
   await prisma.$transaction(async (tx) => {
-    if (hasRisk) {
-      await tx.user.update({ where: { id: s.sub }, data: { riskProfile } });
+    if (hasStatus) {
+      await tx.user.update({
+        where: { id: s.sub },
+        data: {
+          ...(financialStatus !== undefined ? { financialStatus } : {}),
+          ...(financialStatusManual !== undefined ? { financialStatusManual } : {}),
+        },
+      });
     }
     if (hasProfileFields) {
       await tx.userProfile.upsert({

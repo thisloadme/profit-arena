@@ -2,7 +2,7 @@
  * Seed: market universe + initial game event placeholders + a demo user.
  * Run: bun run db:seed
  */
-import { PrismaClient, AssetType, RiskProfile } from "@prisma/client";
+import { PrismaClient, AssetType, FinancialStatus } from "@prisma/client";
 import { ASSET_SEEDS } from "../src/config/assets";
 import { GAME_CONFIG } from "../src/config/game";
 import { hashPassword } from "../src/lib/auth";
@@ -23,6 +23,22 @@ const QUESTS = [
   { code: "DAILY_TRADE", title: "Trader Harian", description: "Lakukan 1 transaksi hari ini", targetCount: 1, rewardCash: 500 },
   { code: "DAILY_LOGIN", title: "Hadiah Masuk", description: "Login hari ini", targetCount: 1, rewardCash: 100 },
   { code: "DAILY_BUSINESS_PROFIT", title: "Profit Bisnis", description: "Bisnismu untung 500 hari ini", targetCount: 500, rewardCash: 300 },
+];
+
+// Job catalog (NPC companies). Multiplayer-safe: static, all players see same.
+// Salary numbers are calibrated to give a comparable boost to STRUGGLING tier:
+// a single ENTRY weekly job ≈ $400/week. Seniors scale up accordingly.
+const JOB_CATALOG = [
+  { code: "BARISTA_WK",    title: "Barista",            company: "Daily Grind Co.",   tier: "ENTRY",  salaryPerPay: 320,  payPeriod: "WEEKLY"  as const, workStartHour: 7,  workEndHour: 14, description: "Pour espresso, smile at customers, clean the grinder. Early mornings, free coffee.", badgeColor: "warning" },
+  { code: "FREELANCE_WK",  title: "Freelance Writer",   company: "QuickCopy Studio",  tier: "ENTRY",  salaryPerPay: 480,  payPeriod: "WEEKLY"  as const, workStartHour: 10, workEndHour: 16, description: "Write blog posts and ad copy on flexible hours. Work from anywhere.",          badgeColor: "info" },
+  { code: "RETAIL_WK",    title: "Retail Associate",   company: "Sunset Mall",       tier: "ENTRY",  salaryPerPay: 360,  payPeriod: "WEEKLY"  as const, workStartHour: 14, workEndHour: 22, description: "Help customers, restock shelves, operate register. Evening shift.",           badgeColor: "primary" },
+  { code: "DRIVER_WK",    title: "Delivery Driver",    company: "SpeedyBox",         tier: "ENTRY",  salaryPerPay: 540,  payPeriod: "WEEKLY"  as const, workStartHour: 9,  workEndHour: 18, description: "Drop packages across the city. Mileage reimbursed, tips not included.",        badgeColor: "warning" },
+  { code: "NURSE_WK",     title: "Nurse",              company: "City Hospital",     tier: "MID",    salaryPerPay: 1200, payPeriod: "WEEKLY"  as const, workStartHour: 6,  workEndHour: 14, description: "Care for patients on the morning shift. Stable hours, meaningful work.",      badgeColor: "info" },
+  { code: "DEV_MO",      title: "Software Engineer",  company: "TechNova Labs",     tier: "MID",    salaryPerPay: 4200, payPeriod: "MONTHLY" as const, workStartHour: 9,  workEndHour: 18, description: "Build features, review PRs, debate tabs vs spaces. Hybrid, full benefits.",     badgeColor: "primary" },
+  { code: "ACCT_MO",     title: "Accountant",         company: "Ledger & Co.",      tier: "MID",    salaryPerPay: 3800, payPeriod: "MONTHLY" as const, workStartHour: 8,  workEndHour: 17, description: "Reconcile books, prep tax filings, advise clients. Numbers don't lie.",        badgeColor: "info" },
+  { code: "PM_MO",       title: "Project Manager",    company: "BuildRight",        tier: "SENIOR", salaryPerPay: 6800, payPeriod: "MONTHLY" as const, workStartHour: 8,  workEndHour: 19, description: "Run sprints, unblock teams, ship on time. Stock options included.",            badgeColor: "primary" },
+  { code: "LAWYER_MO",   title: "Corporate Lawyer",   company: "Hart & Partners",   tier: "SENIOR", salaryPerPay: 9500, payPeriod: "MONTHLY" as const, workStartHour: 9,  workEndHour: 19, description: "Negotiate deals, draft contracts, bill by the hour. Prestige, long hours.",     badgeColor: "loss" },
+  { code: "NIGHT_MO",    title: "Security Analyst",   company: "NightOwl SOC",      tier: "MID",    salaryPerPay: 4400, payPeriod: "MONTHLY" as const, workStartHour: 22, workEndHour: 6,  description: "Watch dashboards, respond to incidents. Graveyard shift, plus premium pay.",   badgeColor: "info" },
 ];
 
 const prisma = new PrismaClient();
@@ -66,7 +82,7 @@ async function main() {
       username: "alice",
       email: "alice@example.com",
       passwordHash: demoPasswordHash,
-      riskProfile: RiskProfile.MODERATE,
+      financialStatus: FinancialStatus.STABLE,
       cash: 10_000, // small seed so demo user can act; fresh users start at STARTING_CASH
       profile: { create: {} },
       creditScore: { create: { score: GAME_CONFIG.CREDIT_SCORE_DEFAULT } },
@@ -93,6 +109,16 @@ async function main() {
     });
   }
   console.log("  ✓ achievements:", ACHIEVEMENTS.length, "quests:", QUESTS.length);
+
+  console.log("→ Seeding job catalog…");
+  for (const j of JOB_CATALOG) {
+    await prisma.job.upsert({
+      where: { code: j.code },
+      update: {},
+      create: j,
+    });
+  }
+  console.log("  ✓ jobs:", JOB_CATALOG.length);
 
   console.log("✓ Seed complete.");
 }

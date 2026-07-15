@@ -25,7 +25,8 @@ model User {
   totalDebt   Float @default(0)
   cash        Float @default(0)
 
-  riskProfile RiskProfile @default(MODERATE)
+  financialStatus     FinancialStatus  @default(STABLE)
+  financialStatusManual Boolean         @default(false)
 
   profile          UserProfile?
   assets           Asset[]
@@ -58,10 +59,11 @@ model UserProfile {
   @@map("user_profiles")
 }
 
-enum RiskProfile {
-  CONSERVATIVE
-  MODERATE
-  AGGRESSIVE
+enum FinancialStatus {
+  STRUGGLING
+  STABLE
+  COMFORTABLE
+  WEALTHY
 }
 
 enum AssetType {
@@ -123,17 +125,59 @@ model Business {
 }
 
 model Employment {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @db.Uuid
-  companyName   String
-  position      String
-  salaryPerTick Float
-  isActive      Boolean  @default(true)
-  startDate     DateTime @default(now())
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  jobId           String?          @db.Uuid
+  companyName     String
+  position        String
+  salaryPerPay    Float
+  payPeriod       PayPeriod        @default(WEEKLY)
+  workStartHour   Int              @default(9)
+  workEndHour     Int              @default(17)
+  nextPayAtTick   Int              @default(0)
+  status          EmploymentStatus @default(ACTIVE)
+  noticeUntilTick Int?
+  startDate       DateTime         @default(now())
+  endDate         DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job?  @relation(fields: [jobId], references: [id])
 
+  @@index([status, nextPayAtTick])
+  @@index([userId, status])
   @@map("employments")
+}
+
+enum PayPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  NOTICE
+  TERMINATED
+}
+
+// Job catalog (NPC companies). Multiplayer-safe: static catalog, all players see same jobs.
+model Job {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
+  title         String
+  company       String
+  tier          String // ENTRY | MID | SENIOR
+  salaryPerPay  Float
+  payPeriod     PayPeriod
+  workStartHour Int      @default(9)
+  workEndHour   Int      @default(17)
+  description   String
+  badgeColor    String   @default("primary")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  employments Employment[]
+
+  @@map("jobs")
 }
 
 model Loan {

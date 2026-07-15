@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { GAME_CONFIG } from "@/config/game";
+import {
+  GAME_CONFIG,
+  computeFinancialStatus,
+  LIVING_EXPENSE_BY_STATUS,
+  type FinancialStatusKey,
+} from "@/config/game";
 import { getBusinessType, moraleFromWage, revenueMultiplierFromMorale, incidentChance, INCIDENT_REVENUE_MULT } from "@/config/businesses";
+import { payPeriodTicks } from "@/config/jobs";
 import { gaussian } from "@/server/engine/rng";
 
 export type FinancialTickResult = {
@@ -11,33 +17,45 @@ export type FinancialTickResult = {
 
 /**
  * One financial tick: salary, business P/L, living expense, loan interest,
- * loan auto-repayment (game-monthly), late penalty, net worth recompute.
+ * loan auto-repayment (game-monthly), late penalty, net worth recompute,
+ * financial status auto-recompute (unless user pinned manually).
  *
  * ponytail: per-user transactions for ACID. Batching into one giant tx would
  * be faster but locks the whole user table on a single tick — and 1 user's
  * bad row shouldn't roll back everyone else. Switch to bulk UPDATEs if
  * profiling shows per-user txns are the bottleneck.
  *
- * Tick → game-month boundary is decided by caller via TICKS_PER_GAME_MONTH.
+ * Tick → game-month boundary is decided by caller via TICKS_PER_GAME_DAY_PERIOD.
  */
 export async function runFinancialTick(opts: {
   tickNumber: number;
 }): Promise<FinancialTickResult> {
   const { tickNumber } = opts;
-  const isMonthBoundary = tickNumber % GAME_CONFIG.TICKS_PER_GAME_MONTH === 0;
+  const isMonthBoundary = tickNumber % GAME_CONFIG.TICKS_PER_GAME_DAY_PERIOD === 0;
 
   const users = await prisma.user.findMany({
     select: {
       id: true,
       cash: true,
+      financialStatus: true,
+      financialStatusManual: true,
       assets: { select: { symbol: true, quantity: true, currentPrice: true } },
       businesses: {
         where: { isActive: true },
         select: { id: true, type: true, name: true, revenuePerTick: true, expensePerTick: true, createdAtTick: true, salaryPerEmployee: true },
       },
       employments: {
-        where: { isActive: true },
-        select: { salaryPerTick: true },
+        where: { status: { in: ["ACTIVE", "NOTICE"] } },
+        select: {
+          id: true,
+          salaryPerPay: true,
+          payPeriod: true,
+          nextPayAtTick: true,
+          status: true,
+          noticeUntilTick: true,
+          position: true,
+          companyName: true,
+        },
       },
       loansTaken: {
         where: { status: "ACTIVE" },
@@ -52,8 +70,38 @@ export async function runFinancialTick(opts: {
   for (const u of users) {
     let cash = u.cash;
 
-    // Income
-    const income = u.employments.reduce((s, e) => s + e.salaryPerTick, 0);
+    // ── Jobs: periodic salary payment (FR-29). Salary does NOT pay per-tick;
+    // it pays once at nextPayAtTick. Status NOTICE still pays the next cycle,
+    // then flips to TERMINATED when noticeUntilTick is reached.
+    let income = 0;
+    const salaryTransactions: { amount: number; description: string }[] = [];
+    const employmentUpdates: { id: string; nextPayAtTick: number; status?: "ACTIVE" | "NOTICE" | "TERMINATED"; noticeUntilTick?: number | null }[] = [];
+
+    for (const e of u.employments) {
+      // Step NOTICE → TERMINATED when notice window ends.
+      if (e.status === "NOTICE" && e.noticeUntilTick !== null && tickNumber >= e.noticeUntilTick) {
+        employmentUpdates.push({
+          id: e.id,
+          nextPayAtTick: e.nextPayAtTick,
+          status: "TERMINATED",
+        });
+      }
+      // Pay salary if due (also pays during NOTICE — last paycheck).
+      if (tickNumber >= e.nextPayAtTick && e.status !== "TERMINATED" && e.salaryPerPay > 0) {
+        income += e.salaryPerPay;
+        salaryTransactions.push({
+          amount: e.salaryPerPay,
+          description: `Salary — ${e.position} @ ${e.companyName}`,
+        });
+        const next = e.nextPayAtTick + payPeriodTicks(e.payPeriod);
+        const statusUpdate = e.status === "NOTICE" ? { status: "NOTICE" as const } : {};
+        const noticeUpdate =
+          e.noticeUntilTick !== null && e.noticeUntilTick !== undefined
+            ? { noticeUntilTick: e.noticeUntilTick }
+            : {};
+        employmentUpdates.push({ id: e.id, nextPayAtTick: next, ...statusUpdate, ...noticeUpdate });
+      }
+    }
 
     // Business revenue: wage→morale→multiplier, plus volatility noise and
     // discrete incident events (supply break, walkout) that slash a tick's revenue.
@@ -65,7 +113,7 @@ export async function runFinancialTick(opts: {
       // Experience reduces volatility: 1% per game-month, max 5%.
       // Property excluded — passive income is inherently stable.
       if (b.type !== "PROPERTY") {
-        const monthsActive = (tickNumber - b.createdAtTick) / GAME_CONFIG.TICKS_PER_GAME_MONTH;
+        const monthsActive = (tickNumber - b.createdAtTick) / GAME_CONFIG.TICKS_PER_GAME_DAY_PERIOD;
         const reduction = Math.min(0.05, Math.max(0, monthsActive * 0.01));
         vol *= 1 - reduction;
       }
@@ -89,14 +137,18 @@ export async function runFinancialTick(opts: {
     }, 0);
     const bizExpense = u.businesses.reduce((s, b) => s + b.expensePerTick, 0);
 
-    // Living expense with compounding inflation per tick
+    // Living expense scales with financial status (cheaper as you climb tiers)
+    // + compounding inflation on top. Status is the user's current tier; auto-
+    // recompute happens further down, after we've recomputed netWorth.
     const inflationFactor = Math.pow(1 + GAME_CONFIG.LIVING_EXPENSE_INFLATION_PER_TICK, tickNumber);
-    const livingExpense = GAME_CONFIG.LIVING_EXPENSE_PER_TICK * inflationFactor;
+    const statusExpense = LIVING_EXPENSE_BY_STATUS[u.financialStatus as FinancialStatusKey]
+      ?? GAME_CONFIG.LIVING_EXPENSE_PER_TICK;
+    const livingExpense = statusExpense * inflationFactor;
 
     cash += income + bizRevenue - bizExpense - livingExpense;
 
     // Loan interest (accrue daily portion of monthly rate)
-    const dailyRateFraction = 1 / GAME_CONFIG.TICKS_PER_GAME_MONTH;
+    const dailyRateFraction = 1 / GAME_CONFIG.TICKS_PER_GAME_DAY_PERIOD;
     const interestAccrued = u.loansTaken.reduce(
       (s, l) => s + l.remainingAmount * l.interestRate * dailyRateFraction,
       0,
@@ -143,17 +195,76 @@ export async function runFinancialTick(opts: {
     const totalDebt = u.loansTaken.reduce((s, l) => s + l.remainingAmount, 0);
     const netWorth = cash + assetsValue - totalDebt;
 
+    // Auto-recompute financial status unless the user pinned it manually.
+    // ponytail: tier flip is rare and idempotent — single UPDATE, no notification
+    // spam. The next time it changes, the notification below only fires on the
+    // boundary crossing tick (statusChanged gate).
+    let statusChanged = false;
+    let effectiveStatus: FinancialStatusKey = u.financialStatus as FinancialStatusKey;
+    if (!u.financialStatusManual) {
+      const next = computeFinancialStatus(netWorth);
+      if (next !== u.financialStatus) {
+        effectiveStatus = next;
+        statusChanged = true;
+      } else {
+        effectiveStatus = u.financialStatus as FinancialStatusKey;
+      }
+    }
+    if (statusChanged) {
+      notifications.push({
+        title: "Financial status changed",
+        message: `You're now ${effectiveStatus.toLowerCase()} — living expense adjusted automatically.`,
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: u.id },
-        data: { cash, totalAssets: assetsValue, totalDebt, netWorth },
+        data: {
+          cash,
+          totalAssets: assetsValue,
+          totalDebt,
+          netWorth,
+          ...(statusChanged ? { financialStatus: effectiveStatus } : {}),
+        },
       });
 
       if (income > 0) {
-        await tx.transaction.create({
-          data: { userId: u.id, type: "SALARY", amount: income, description: "Salary" },
+        // ponytail: one row per pay cycle per employment keeps the history
+        // inspectable instead of an opaque total. Cheap on insert, useful on
+        // Reports. Merge to a sum only if profiling shows it matters.
+        for (const st of salaryTransactions) {
+          await tx.transaction.create({
+            data: { userId: u.id, type: "SALARY", amount: st.amount, description: st.description },
+          });
+        }
+      }
+
+      // Employment state machine: pay cadence advance + auto-terminate NOTICE.
+      // Updates are deduped by employment id (last write wins, but they're
+      // always aligned — pay cadence bump plus optional status flip).
+      const employmentMerged = new Map<string, { id: string; nextPayAtTick: number; status?: "ACTIVE" | "NOTICE" | "TERMINATED"; noticeUntilTick?: number | null }>();
+      for (const u2 of employmentUpdates) {
+        const prev = employmentMerged.get(u2.id);
+        if (!prev) { employmentMerged.set(u2.id, u2); continue; }
+        employmentMerged.set(u2.id, {
+          id: u2.id,
+          nextPayAtTick: u2.nextPayAtTick,
+          status: u2.status ?? prev.status,
+          noticeUntilTick: u2.noticeUntilTick !== undefined ? u2.noticeUntilTick : prev.noticeUntilTick,
         });
       }
+      for (const eu of employmentMerged.values()) {
+        await tx.employment.update({
+          where: { id: eu.id },
+          data: {
+            nextPayAtTick: eu.nextPayAtTick,
+            ...(eu.status ? { status: eu.status } : {}),
+            ...(eu.noticeUntilTick !== undefined ? { noticeUntilTick: eu.noticeUntilTick } : {}),
+          },
+        });
+      }
+
       if (bizRevenue - bizExpense !== 0) {
         await tx.transaction.create({
           data: {
@@ -165,7 +276,12 @@ export async function runFinancialTick(opts: {
         });
       }
       await tx.transaction.create({
-        data: { userId: u.id, type: "EXPENSE", amount: livingExpense, description: "Living expense" },
+        data: {
+          userId: u.id,
+          type: "EXPENSE",
+          amount: livingExpense,
+          description: `Living expense (${effectiveStatus})`,
+        },
       });
       if (interestAccrued > 0) {
         await tx.transaction.create({

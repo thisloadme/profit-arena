@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { PRIMARY_NAV } from "@/config/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logoNoBg from "@/assets/marketarena_logo_nobg.png";
 
 /**
  * Desktop sidebar — pinned left, "trading floor" vibe per Stitch dashboard.
@@ -16,13 +18,22 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-card md:flex">
       {/* Brand */}
-      <div className="flex h-16 flex-col justify-center px-4">
-        <span className="text-sm font-bold tracking-tight text-primary">
-          Money Carnival
-        </span>
-        <span className="text-[10px] font-medium uppercase tracking-widest text-text-faint">
-          Pro Trader Platform
-        </span>
+      <div className="flex h-16 items-center gap-2.5 px-4">
+        <Image
+          src={logoNoBg}
+          alt="Market Arena"
+          width={28}
+          height={28}
+          className="h-7 w-7"
+        />
+        <div className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-bold tracking-tight text-primary">
+            Market Arena
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-widest text-text-faint">
+            Financial Simulation Arena
+          </span>
+        </div>
       </div>
 
       {/* Nav */}

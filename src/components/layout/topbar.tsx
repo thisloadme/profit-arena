@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Menu, UserCircle, X } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { NetWorthDisplay } from "./net-worth-display";
@@ -12,6 +13,7 @@ import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import { PRIMARY_NAV } from "@/config/nav";
 import { cn } from "@/lib/cn";
+import logoNoBg from "@/assets/marketarena_logo_nobg.png";
 
 type TickerState = { running: boolean; gameTimeMs: number };
 
@@ -145,9 +147,18 @@ export function TopBar({
               transition={{ type: "spring", stiffness: 400, damping: 35 }}
             >
               <div className="flex h-16 items-center justify-between border-b border-border px-4">
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold tracking-tight text-primary">Money Carnival</span>
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-text-faint">Pro Trader Platform</span>
+                <div className="flex items-center gap-2.5">
+                  <Image
+                    src={logoNoBg}
+                    alt="Market Arena"
+                    width={28}
+                    height={28}
+                    className="h-7 w-7"
+                  />
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-sm font-bold tracking-tight text-primary">Market Arena</span>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-text-faint">Financial Simulation Arena</span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setNavOpen(false)}

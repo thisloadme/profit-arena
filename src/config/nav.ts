@@ -7,6 +7,7 @@ import {
   Trophy,
   History,
   BarChart3,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/market", label: "Market", icon: CandlestickChart, shortcut: "m" },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase, shortcut: "p" },
   { href: "/business", label: "Business", icon: Store, shortcut: "b" },
+  { href: "/jobs", label: "Jobs", icon: GraduationCap, shortcut: "j" },
   { href: "/lending", label: "Lending", icon: HandCoins, shortcut: "l" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, shortcut: "k" },
   { href: "/history", label: "History", icon: History, shortcut: "h" },
@@ -32,7 +34,7 @@ export const PRIMARY_NAV: NavItem[] = [
 export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[0]!, // Dashboard
   PRIMARY_NAV[1]!, // Market
-  PRIMARY_NAV[3]!, // Bisnis
-  PRIMARY_NAV[4]!, // Pinjaman
-  PRIMARY_NAV[5]!, // Ranking
+  PRIMARY_NAV[4]!, // Jobs
+  PRIMARY_NAV[5]!, // Pinjaman
+  PRIMARY_NAV[6]!, // Ranking
 ];
