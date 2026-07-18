@@ -1,7 +1,7 @@
 /**
  * OHLC (candlestick) helpers.
  *
- * ponytail: no DB-side aggregation — group in-memory from PriceHistory.
+ * no DB-side aggregation — group in-memory from PriceHistory.
  * MVP scale (<1000 points) makes this faster than a complex SQL query.
  * Switch to DB bucketing when chart pageviews exceed 10k/day.
  */

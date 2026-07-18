@@ -2,7 +2,7 @@
 -- Mapping: MODERATE → STABLE (preserves current default; users on CONSERVATIVE
 -- demote to STRUGGLING, AGGRESSIVE promote to COMFORTABLE — closer to intent
 -- than a blanket default).
--- ponytail: Postgres can't ALTER TYPE rename + change values in one shot;
+-- Postgres can't ALTER TYPE rename + change values in one shot;
 -- add new type, convert column, drop old. Atomic per-table, runs in <1s.
 
 ALTER TYPE "RiskProfile" RENAME TO "FinancialStatus";

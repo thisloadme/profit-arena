@@ -1,6 +1,6 @@
 import type { Variants, Transition } from "framer-motion";
 
-/** Shared transition presets — ponytail: one source of truth for all animations. */
+/** Shared transition presets — one source of truth for all animations. */
 export const fastTransition: Transition = { duration: 0.15, ease: "easeOut" };
 export const springTransition: Transition = { type: "spring", stiffness: 300, damping: 25 };
 

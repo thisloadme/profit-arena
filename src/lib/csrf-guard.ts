@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 /**
  * CSRF guard via Origin/Referer header check.
  *
- * ponytail: sameSite=cookie is the primary defense. This guard rejects
+ * sameSite=cookie is the primary defense. This guard rejects
  * cross-origin POSTs (other than our own deploy origin) as defense-in-depth
  * against subdomain attacks. Use only on state-changing routes.
  *

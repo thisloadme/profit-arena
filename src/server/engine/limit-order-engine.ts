@@ -12,7 +12,7 @@ import { isMarketOpen } from "./tick-scheduler";
  *  - limitPrice null → queued MARKET order for STOCK placed while the market
  *    was closed; fills at the next open price, no price condition.
  *
- * ponytail: scans all pending orders per tick. For large order books,
+ * scans all pending orders per tick. For large order books,
  * index on (status, symbol) keeps it fast — at MVP scale, negligible.
  */
 export async function executeLimitOrders(): Promise<void> {

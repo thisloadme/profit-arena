@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     return parsed;
   });
 
-  // ponytail: prevNetWorth — use month-start net worth from first transaction of the month
+  // prevNetWorth — use month-start net worth from first transaction of the month
   const firstTx = await prisma.transaction.findFirst({
     where: { userId: s.sub, createdAt: { gte: start } },
     orderBy: { createdAt: "asc" },

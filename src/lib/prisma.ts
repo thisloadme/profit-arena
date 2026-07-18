@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-// ponytail: global singleton — prevents hot-reload from spawning N clients in dev.
+// global singleton — prevents hot-reload from spawning N clients in dev.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma =

@@ -34,7 +34,7 @@ const RISK_GRADES: { grade: string; maxRate: number; cls: string }[] = [
 ];
 
 function riskGrade(rate: number) {
-  // ponytail: heuristic risk grade from monthly rate; no DB field — upgrade when risk model exists
+  // heuristic risk grade from monthly rate; no DB field — upgrade when risk model exists
   return RISK_GRADES.find((g) => rate <= g.maxRate) ?? RISK_GRADES[RISK_GRADES.length - 1];
 }
 
@@ -54,7 +54,7 @@ export default function LendingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [repaying, setRepaying] = useState<string | null>(null);
 
-  // ponytail: load() is also called from event handlers (accept/bank/form/repay) — keep it shared.
+  // load() is also called from event handlers (accept/bank/form/repay) — keep it shared.
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -299,7 +299,7 @@ function ActivityRow({ loan, kind, onRepay, repaying }: { loan: Loan; kind: "giv
   const [repayAmt, setRepayAmt] = useState("");
 
   // Schedule
-  // ponytail: simple straight-line amortization; no interest-on-interest.
+  // simple straight-line amortization; no interest-on-interest.
   const installment = loan.tenorMonths > 0 ? (loan.amount * (1 + loan.interestRate)) / loan.tenorMonths : 0;
   const paidPrincipal = loan.amount - loan.remainingAmount;
   const paymentsMade = installment > 0 ? Math.floor(paidPrincipal / installment) : 0;

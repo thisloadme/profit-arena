@@ -45,11 +45,11 @@ const prisma = new PrismaClient();
 
 async function main() {
 	console.log("→ Seeding market data…");
-	// ponytail: delete orphans not in current config so stock count matches config.
+	// delete orphans not in current config so stock count matches config.
 	const activeSymbols = ASSET_SEEDS.map((a) => a.symbol);
 	await prisma.marketData.deleteMany({ where: { symbol: { notIn: activeSymbols } } });
 
-	// ponytail: upsert pattern keeps seed idempotent without a separate reset.
+	// upsert pattern keeps seed idempotent without a separate reset.
 	for (const a of ASSET_SEEDS) {
     await prisma.marketData.upsert({
       where: { symbol: a.symbol },

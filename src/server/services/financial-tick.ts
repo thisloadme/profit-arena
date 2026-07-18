@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { FinancialStatus } from "@prisma/client";
 import {
   GAME_CONFIG,
   computeFinancialStatus,
@@ -20,7 +21,7 @@ export type FinancialTickResult = {
  * loan auto-repayment (game-monthly), late penalty, net worth recompute,
  * financial status auto-recompute (unless user pinned manually).
  *
- * ponytail: per-user transactions for ACID. Batching into one giant tx would
+ * per-user transactions for ACID. Batching into one giant tx would
  * be faster but locks the whole user table on a single tick — and 1 user's
  * bad row shouldn't roll back everyone else. Switch to bulk UPDATEs if
  * profiling shows per-user txns are the bottleneck.
@@ -39,7 +40,13 @@ export async function runFinancialTick(opts: {
       cash: true,
       financialStatus: true,
       financialStatusManual: true,
-      assets: { select: { symbol: true, quantity: true, currentPrice: true } },
+      // Liquidation hook fields: gate the trigger + measure grace window.
+      isLiquidated: true,
+      liquidateAt: true,
+      liquidateGraceStartedAt: true,
+      assets: {
+        select: { id: true, symbol: true, quantity: true, currentPrice: true },
+      },
       businesses: {
         where: { isActive: true },
         select: { id: true, type: true, name: true, revenuePerTick: true, expensePerTick: true, createdAtTick: true, salaryPerEmployee: true },
@@ -67,7 +74,7 @@ export async function runFinancialTick(opts: {
   const updatedIds: string[] = [];
   const allNotifications: { userId: string; title: string; message: string }[] = [];
 
-  // ponytail: per-user ACID is preserved (one bad row shouldn't roll back
+  // per-user ACID is preserved (one bad row shouldn't roll back
   // everyone). Process users in bounded-parallel batches so we don't hammer
   // Postgres with N concurrent connections at scale.
   const BATCH = 10;
@@ -79,7 +86,11 @@ export async function runFinancialTick(opts: {
         cash: Number(u.cash),
         financialStatus: u.financialStatus,
         financialStatusManual: u.financialStatusManual,
+        isLiquidated: u.isLiquidated,
+        liquidateAt: u.liquidateAt,
+        liquidateGraceStartedAt: u.liquidateGraceStartedAt,
         assets: u.assets.map((a) => ({
+          id: a.id,
           symbol: a.symbol,
           quantity: Number(a.quantity),
           currentPrice: Number(a.currentPrice),
@@ -132,7 +143,10 @@ async function processOneUser(
     cash: number;
     financialStatus: string;
     financialStatusManual: boolean;
-    assets: { symbol: string; quantity: number; currentPrice: number }[];
+    isLiquidated: boolean;
+    liquidateAt: Date | null;
+    liquidateGraceStartedAt: Date | null;
+    assets: { id: string; symbol: string; quantity: number; currentPrice: number }[];
     businesses: {
       id: string;
       type: string;
@@ -291,8 +305,74 @@ async function processOneUser(
     const totalDebt = u.loansTaken.reduce((s, l) => s + l.remainingAmount, 0);
     const netWorth = cash + assetsValue - totalDebt;
 
+    // ── Liquidation hook ─────────────────────────────────────────────────
+    // If the user has been at netWorth <= 0 for LIQUIDATION_GRACE_MS in
+    // real time, sell everything, settle what we can, zero cash, and flag
+    // the account so this fires exactly once. The user can recover via the
+    // reset endpoint (gives a fresh STARTING_CASH). We measure grace in real
+    // time — game-tick math would tie grace to TICK_INTERVAL_MS, which is
+    // tunable. Real days are predictable for the player.
+    //
+    // While netWorth > 0, the grace start timestamp stays null. As soon as
+    // we dip below 0, we set it; recovery clears it.
+    const now = new Date();
+    const graceExpired =
+      u.liquidateGraceStartedAt !== null &&
+      now.getTime() - u.liquidateGraceStartedAt.getTime() >= GAME_CONFIG.LIQUIDATION_GRACE_MS;
+    if (!u.isLiquidated && netWorth <= 0 && graceExpired) {
+      const liquidationCash = Math.max(0, assetsValue - totalDebt);
+      await prisma.$transaction(async (tx) => {
+        // Sell all asset holdings at current price.
+        if (u.assets.length > 0) {
+          await tx.asset.deleteMany({ where: { userId: u.id } });
+        }
+        // Deactivate businesses (don't hard-delete — preserves history for audit).
+        if (u.businesses.length > 0) {
+          await tx.business.updateMany({
+            where: { ownerId: u.id, isActive: true },
+            data: { isActive: false },
+          });
+        }
+        // Cancel outstanding loans: lender loses claim, borrower no longer owes.
+        // (Single-player-safe choice; for real P2P this would need escrow rules.)
+        if (u.loansTaken.length > 0) {
+          await tx.loan.updateMany({
+            where: { borrowerId: u.id, status: "ACTIVE" },
+            data: { status: "DEFAULTED" },
+          });
+        }
+        await tx.user.update({
+          where: { id: u.id },
+          data: {
+            cash: liquidationCash,
+            totalAssets: 0,
+            totalDebt: 0,
+            netWorth: liquidationCash,
+            isLiquidated: true,
+            liquidateAt: now,
+            liquidateGraceStartedAt: null,
+            financialStatus: FinancialStatus.STRUGGLING,
+            financialStatusManual: false,
+          },
+        });
+      });
+      notifications.push({
+        title: "Account liquidated",
+        message: `Your net worth stayed at or below $0 for over ${GAME_CONFIG.LIQUIDATION_GRACE_DAYS} days. Assets were sold and loans settled. Cash is now $${liquidationCash.toLocaleString("en-US")}. Visit the dashboard to reset and start fresh.`,
+      });
+      return { id: u.id, notifications: notifications.map((n) => ({ userId: u.id, ...n })) };
+    }
+
+    // Track grace start: stamp when first dipping below 0; clear on recovery.
+    const graceUpdate =
+      netWorth > 0
+        ? { liquidateGraceStartedAt: null }
+        : u.liquidateGraceStartedAt === null
+          ? { liquidateGraceStartedAt: now }
+          : {};
+
     // Auto-recompute financial status unless the user pinned it manually.
-    // ponytail: tier flip is rare and idempotent — single UPDATE, no notification
+    // tier flip is rare and idempotent — single UPDATE, no notification
     // spam. The next time it changes, the notification below only fires on the
     // boundary crossing tick (statusChanged gate).
     let statusChanged = false;
@@ -322,11 +402,12 @@ async function processOneUser(
           totalDebt,
           netWorth,
           ...(statusChanged ? { financialStatus: effectiveStatus } : {}),
+          ...graceUpdate,
         },
       });
 
       if (income > 0) {
-        // ponytail: one row per pay cycle per employment keeps the history
+        // one row per pay cycle per employment keeps the history
         // inspectable instead of an opaque total. Cheap on insert, useful on
         // Reports. Merge to a sum only if profiling shows it matters.
         for (const st of salaryTransactions) {

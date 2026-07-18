@@ -1,7 +1,7 @@
 /**
  * Pure constants for auth — no imports from next/headers.
  *
- * ponytail: split from auth.ts so non-Next runtimes (tsx server.ts → socket.io)
+ * split from auth.ts so non-Next runtimes (tsx server.ts → socket.io)
  * can read the cookie name + secret without dragging in Next's AsyncLocalStorage.
  */
 

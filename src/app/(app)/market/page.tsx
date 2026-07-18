@@ -15,7 +15,8 @@ import { useSocket } from "@/hooks/use-socket";
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { OHLC } from "@/lib/ohlc";
-import { TIMEFRAMES, DEFAULT_TIMEFRAME, type TimeframeId } from "@/config/timeframes";
+import { TIMEFRAMES, DEFAULT_TIMEFRAME, getTimeframe, type TimeframeId } from "@/config/timeframes";
+import { GAME_CONFIG } from "@/config/game";
 
 type MarketItem = {
   symbol: string;
@@ -68,7 +69,7 @@ export default function MarketPage() {
   const [tick, setTick] = useState(0);
 
 	  useEffect(() => {
-	    // ponytail: read ?symbol= once at mount to support Portfolio deep-link
+	    // read ?symbol= once at mount to support Portfolio deep-link
 	    const urlSymbol = new URLSearchParams(window.location.search).get("symbol");
 	    fetch("/api/market")
 	      .then((r) => r.json())
@@ -114,7 +115,7 @@ export default function MarketPage() {
     }
     return [...list].sort((a, b) => {
       if (sortBy === "symbol") return a.symbol.localeCompare(b.symbol);
-      if (sortBy === "price") return b.price - a.price;
+      if (sortBy === "price") return toPrice(b.price) - toPrice(a.price);
       const ca = changeMap[a.symbol] ?? 0;
       const cb = changeMap[b.symbol] ?? 0;
       if (sortBy === "changePct") return cb - ca;
@@ -247,7 +248,7 @@ export default function MarketPage() {
                     </div>
                     {/* Price */}
                     <div className="w-[18%] text-right">
-                      <span className="tnum text-xs font-bold text-text"><Money value={m.price} compact /></span>
+                      <span className="tnum text-xs font-bold text-text"><Money value={toPrice(m.price)} compact /></span>
                     </div>
                     {/* Change */}
                     <div className="w-[16%] text-right">
@@ -255,7 +256,7 @@ export default function MarketPage() {
                     </div>
                     {/* Volatility */}
                     <div className="w-[14%] text-right">
-                      <span className="tnum text-xs text-text-muted">{(m.volatility * 100).toFixed(1)}%</span>
+                      <span className="tnum text-xs text-text-muted">{(toPrice(m.volatility) * 100).toFixed(1)}%</span>
                     </div>
                     {/* Type */}
                     <div className="w-[14%] text-right">
@@ -299,6 +300,7 @@ type DetailProps = {
 type OrderType = "market" | "limit";
 
 function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: DetailProps) {
+  const { socket } = useSocket();
   const [candles, setCandles] = useState<OHLC[]>([]);
   const [timeframe, setTimeframe] = useState<TimeframeId>(DEFAULT_TIMEFRAME);
   const [chartMode, setChartMode] = useState<"line" | "candle">("line");
@@ -308,15 +310,64 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  // Track last live tick we already applied for this symbol so a re-emit
+  // (reconnect, double broadcast) doesn't push a duplicate candle.
+  const lastLiveTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
     fetch(`/api/market/${item.symbol}/history?timeframe=${timeframe}`, { signal: ctrl.signal })
       .then((r) => r.json())
-      .then((d) => { if (d.candles) setCandles(d.candles); })
+      .then((d) => {
+        if (d.candles) setCandles(d.candles);
+        lastLiveTickRef.current = null;
+      })
       .catch(() => {});
     return () => ctrl.abort();
   }, [item.symbol, timeframe]);
+
+  // Live candle push: each socket tick = 1 game-minute. We either extend the
+  // current open candle (when tick belongs to same bucket) or append a new one.
+  // Cap array at the original history length so low-TF views don't grow unbounded.
+  useEffect(() => {
+    if (!socket) return;
+    const tf = getTimeframe(timeframe);
+    const handler = (data: { tick: number; prices: { symbol: string; price: number; changePct: number }[] }) => {
+      if (typeof data.tick !== "number") return;
+      const update = data.prices.find((p) => p.symbol === item.symbol);
+      if (!update) return;
+      if (lastLiveTickRef.current === data.tick) return;
+      lastLiveTickRef.current = data.tick;
+      const price = update.price;
+      const iso = new Date(GAME_CONFIG.GAME_START_DATE.getTime() + data.tick * 60_000).toISOString();
+      setCandles((prev) => {
+        const cap = tf.ticks + 32;
+        const last = prev[prev.length - 1];
+        if (!last) {
+          return [{ time: iso, open: price, high: price, low: price, close: price }];
+        }
+        // Heuristic: same bucket iff the candle's `time` (its last-row game-time)
+        // falls within (data.tick - bucketSize, data.tick]. Cheap proxy: compare
+        // tick indices — the candle's tick index is parseable from its `time`.
+        const lastTick = (new Date(last.time).getTime() - GAME_CONFIG.GAME_START_DATE.getTime()) / 60_000;
+        const inSameBucket = data.tick - lastTick < tf.bucketSize;
+        if (inSameBucket) {
+          const updated: OHLC = {
+            time: last.time,
+            open: last.open,
+            high: Math.max(last.high, price),
+            low: Math.min(last.low, price),
+            close: price,
+          };
+          return prev.slice(0, -1).concat(updated);
+        }
+        const next = prev.concat([{ time: iso, open: price, high: price, low: price, close: price }]);
+        return next.length > cap ? next.slice(next.length - cap) : next;
+      });
+    };
+    socket.on("market:update", handler);
+    return () => { socket.off("market:update", handler); };
+  }, [socket, item.symbol, timeframe]);
 
   const orderTotal = toPrice(item.price) * quantity;
   const limitTotal = parseFloat(limitPrice) * quantity || 0;
@@ -415,7 +466,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
             </span>
           </div>
         </div>
-        <RiskMeter value={item.volatility} className="relative z-10 mt-3" />
+        <RiskMeter value={toPrice(item.volatility)} className="relative z-10 mt-3" />
       </div>
 
       {/* Chart */}

@@ -8,7 +8,7 @@ let socket: Socket | null = null;
 /**
  * Singleton Socket.io client with auto-reconnect.
  *
- * ponytail: connect lazily on first hook use. Path matches server's `/api/socketio`.
+ * connect lazily on first hook use. Path matches server's `/api/socketio`.
  * No auth token passed here — server reads session cookie automatically.
  */
 export function useSocket() {

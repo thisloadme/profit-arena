@@ -62,7 +62,7 @@ export function NetWorthHero({ netWorth: initialNetWorth, sparkline: initialSpar
   useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
 
   const fetchData = useCallback(async (tf: TimeframeId) => {
-    // ponytail: loading indicator via shared state; data replaces server props.
+    // loading indicator via shared state; data replaces server props.
     setData({ netWorth: initialNetWorth, sparkline: initialSpark, loading: true });
     const res = await fetch(`/api/dashboard?timeframe=${tf}&t=${Date.now()}`, { cache: "no-store" });
     if (!mountedRef.current) return;
@@ -109,7 +109,7 @@ export function NetWorthHero({ netWorth: initialNetWorth, sparkline: initialSpar
 
   const peak = sparkline.reduce((m, p) => Math.max(m, p.value), netWorth);
   const floor = sparkline.reduce((m, p) => Math.min(m, p.value), netWorth);
-  // ponytail: 8% padding so the line never kisses the panel edge.
+  // 8% padding so the line never kisses the panel edge.
   const pad = (peak - floor) * 0.08 || peak * 0.05;
   const yDomain: [number | "auto", number | "auto"] = [
     Math.max(0, Math.floor(floor - pad)),

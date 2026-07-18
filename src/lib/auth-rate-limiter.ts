@@ -1,7 +1,7 @@
 /**
  * In-memory sliding-window rate limiter for auth endpoints.
  *
- * ponytail: in-memory Map, reset every 15min. At MVP scale (<1000 users)
+ * in-memory Map, reset every 15min. At MVP scale (<1000 users)
  * this uses negligible memory. Replace with Redis if multi-instance.
  */
 

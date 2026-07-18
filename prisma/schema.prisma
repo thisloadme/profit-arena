@@ -15,6 +15,7 @@ model User {
   username     String    @unique
   email        String    @unique
   passwordHash String?
+  emailVerified DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
@@ -28,10 +29,25 @@ model User {
   financialStatus     FinancialStatus  @default(STABLE)
   financialStatusManual Boolean         @default(false)
 
+  // Liquidation hook: when netWorth <= 0 for LIQUIDATION_GRACE_DAYS real
+  // days in a row, the financial tick liquidates assets, settles loans, and
+  // zeroes cash. Set true after fire so it never re-triggers unless reset.
+  // liquidateGraceStartedAt: real UTC timestamp when the user first dipped
+  // into netWorth <= 0 — null while the user is in healthy territory.
+  isLiquidated              Boolean   @default(false)
+  liquidateAt               DateTime?  @db.Timestamptz
+  liquidateGraceStartedAt   DateTime?  @db.Timestamptz
+
+  // Manual liquidation: settings-page button. Tracked in game-time so the
+  // "1 per game-month" cooldown survives real-world clock changes (DST,
+  // paused server). Null = never liquidated manually.
+  lastManualLiquidateAtTick Int?
+
   // Bumped on login + logout to invalidate outstanding session JWTs.
   tokenVersion Int @default(0)
 
   profile          UserProfile?
+  accounts         Account[]
   assets           Asset[]
   businesses       Business[]
   employments      Employment[]
@@ -61,6 +77,21 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
+}
+
+// OAuth identity linked to a User. One user can have multiple providers.
+model Account {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  provider          String   // e.g., "google"
+  providerAccountId String   // provider's stable user id (Google `sub`)
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
 }
 
 enum FinancialStatus {
@@ -135,7 +166,7 @@ model Employment {
   jobId           String?          @db.Uuid
   companyName     String
   position        String
-  salaryPerPay    Decimal @db.Decimal(18, 4)
+  salaryPerPay    Decimal @db.Decimal(18, 4) @default(0)
   payPeriod       PayPeriod        @default(WEEKLY)
   workStartHour   Int              @default(9)
   workEndHour     Int              @default(17)
@@ -202,7 +233,6 @@ model Loan {
 
   @@index([lenderId])
   @@index([borrowerId])
-  @@index([status, dueDate])
   @@map("loans")
 }
 
@@ -224,7 +254,9 @@ model Transaction {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
+  // Perf index — Prisma can't represent DESC ordering. Actual index
+  // transactions_userId_createdAt_idx (with createdAt DESC) is created by
+  // migration 20260717000002.
   @@map("transactions")
 }
 
@@ -250,7 +282,9 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, isRead, createdAt])
+  // Perf index — Prisma can't represent DESC ordering, so the actual index
+  // is created by migration 20260717000002 (notifications_userId_isRead_createdAt_idx
+  // with createdAt DESC). Kept manual to avoid recreating without DESC.
   @@map("notifications")
 }
 

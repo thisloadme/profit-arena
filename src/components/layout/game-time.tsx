@@ -13,8 +13,8 @@ type Props = {
  * server-provided game time. Polls the server periodically to stay in sync.
  * All players see the same game time (server-authoritative).
  *
- * ponytail: polling every 10s is fine for MVP. WebSocket push would reduce
- * lag, but the tick interval is also 10s so polling aligns naturally.
+ * polling every 5s is fine for MVP. WebSocket push would reduce
+ * lag, but the tick interval is also 5s so polling aligns naturally.
  */
 export function GameTime({ initialGameTimeMs }: Props) {
   // Derive the initial display from the prop — no setState in the effect body.
@@ -29,7 +29,7 @@ export function GameTime({ initialGameTimeMs }: Props) {
       } catch {
         // ignore — server might be restarting
       }
-    }, 10_000);
+    }, 5_000);
 
     return () => clearInterval(id);
   }, [initialGameTimeMs]);

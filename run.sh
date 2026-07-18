@@ -31,7 +31,7 @@ done
 echo "🚀 Starting server on port $PORT (ticker=$TICKER)"
 
 # ── 1. Ensure Prisma client matches schema ──────────────────────────────
-# ponytail: cheap (~200ms) and a no-op if client is current. Guarantees
+# cheap (~200ms) and a no-op if client is current. Guarantees
 # the running process never sees a stale client after a schema change.
 echo "🔧 Generating Prisma client..."
 bunx prisma generate >/dev/null

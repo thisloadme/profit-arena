@@ -1,7 +1,7 @@
 /**
  * Prisma Decimal → number coercion helpers.
  *
- * ponytail: the DB stores money as Decimal (precision-safe), but the app
+ * the DB stores money as Decimal (precision-safe), but the app
  * arithmetic is number-typed. Convert at the boundary instead of changing
  * every arithmetic site to use Prisma.Decimal math.
  */

@@ -15,7 +15,7 @@ type Props = {
 /**
  * Animated counter — numbers count up/down on mount and when `to` changes.
  *
- * ponytail: uses framer-motion's `animate()` for lerp, renders a `motion.span`.
+ * uses framer-motion's `animate()` for lerp, renders a `motion.span`.
  * Replace with `useMotionValue` + `useTransform` if `to` changes frequently
  * (e.g., every tick) to avoid re-creating the animation.
  */

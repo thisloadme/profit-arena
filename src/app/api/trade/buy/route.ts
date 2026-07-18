@@ -15,7 +15,7 @@ const buySchema = z.object({
 /**
  * Buy an asset. Server-authoritative.
  *
- * ponytail: pre-validate all conditions before the transaction to keep
+ * pre-validate all conditions before the transaction to keep
  * the ACID window short. Rate limit: max N trades per tick.
  */
 export async function POST(req: Request) {
@@ -144,10 +144,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // ponytail: first trade tracking for analytics
+  // first trade tracking for analytics
   console.log("[event] buy", { userId: session.sub, symbol, quantity, cost: totalCost });
 
-  // ponytail: anti-cheat — flag unusually large buys
+  // anti-cheat — flag unusually large buys
   if (quantity > 100_000) {
     console.log("[anti-cheat] large buy", { userId: session.sub, symbol, quantity, cost: totalCost });
   }

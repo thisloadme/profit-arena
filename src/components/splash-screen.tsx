@@ -12,7 +12,7 @@ const MIN_VISIBLE_MS = 600;
  * paints + a minimum visible window so the logo isn't a flash. Renders into
  * the root layout so it covers all routes (landing, login, app shell).
  *
- * ponytail: global flag (window.__splashShown) prevents re-mounting the
+ * global flag (window.__splashShown) prevents re-mounting the
  * splash when the user navigates client-side after first paint — that
  * would be the most annoying failure mode of an every-reload splash.
  */

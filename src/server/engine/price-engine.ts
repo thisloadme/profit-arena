@@ -33,7 +33,7 @@ const MIN_PRICE = 0.01;
 /** How much 1 net unit of trade moves the price (as a fraction). */
 const VOLUME_WEIGHT = 0.0001;
 
-// ponytail: in-memory Map. Redis or per-symbol counters if multi-process needed.
+// in-memory Map. Redis or per-symbol counters if multi-process needed.
 const tradeVolume = new Map<string, number>();
 
 /**

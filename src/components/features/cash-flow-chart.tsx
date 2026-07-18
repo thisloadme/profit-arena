@@ -16,7 +16,7 @@ export function CashFlowChart({ cashFlow, className }: Props) {
 
   const data = useMemo(() => {
     if (mode === "daily") return cashFlow;
-    // ponytail: group by ISO week (Monday start).
+    // group by ISO week (Monday start).
     const weekly = new Map<string, number>();
     for (const d of cashFlow) {
       const week = getWeekKey(d.date);

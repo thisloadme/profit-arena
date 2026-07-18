@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 /**
  * GET /api/quests — returns all quest definitions + user's progress today.
  *
- * ponytail: no cron-based reset yet. Quests are static from seed with
+ * no cron-based reset yet. Quests are static from seed with
  * progress tracked in UserQuest if the engine updates it. For MVP,
  * this returns quest definitions + placeholder progress.
  */

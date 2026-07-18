@@ -11,7 +11,7 @@ let io: IoServer | null = null;
 /**
  * Attach Socket.io to the given HTTP server. Idempotent.
  *
- * ponytail: single-process mode. For multi-instance deployments, swap the
+ * single-process mode. For multi-instance deployments, swap the
  * default in-memory adapter for @socket.io/redis-adapter (Fase 13).
  */
 export function attachSocketServer(server: HttpServer): IoServer {

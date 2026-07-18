@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ponytail: anti-cheat — flag unusually large sells
+  // anti-cheat — flag unusually large sells
   if (quantity > 100_000) {
     console.log("[anti-cheat] large sell", { userId: session.sub, symbol, quantity, credit: totalCredit });
   }

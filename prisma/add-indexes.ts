@@ -1,5 +1,5 @@
 // Run: bunx tsx prisma/migration-helpers/add-indexes.ts
-// ponytail: one-shot script to add performance indexes on hot columns.
+// one-shot script to add performance indexes on hot columns.
 import { PrismaClient } from "@prisma/client";
 
 const p = new PrismaClient();

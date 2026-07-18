@@ -8,7 +8,7 @@ import { PRIMARY_NAV } from "@/config/nav";
  * Global keyboard shortcuts (DESIGN §5): press a nav shortcut key to jump.
  * Ignored when focus is in input/textarea/contenteditable.
  *
- * ponytail: single document listener; one router.push per match.
+ * single document listener; one router.push per match.
  */
 export function useKeyboardShortcuts() {
   const router = useRouter();

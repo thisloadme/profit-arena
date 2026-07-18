@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 /**
- * ponytail: in-memory LRU cache, recomputed every tick.
+ * in-memory LRU cache, recomputed every tick.
  * At MVP scale (<1000 users) this is faster and simpler than
  * a Redis-backed solution. Swap to Redis when DB query time
  * exceeds 50ms on average.
@@ -70,7 +70,7 @@ export type LeaderboardSummary = {
 
 /**
  * 7-day net-worth gain ranking, computed on demand from transactions.
- * ponytail: no scheduler/writer for WEEKLY snapshots — compute on read.
+ * no scheduler/writer for WEEKLY snapshots — compute on read.
  * O(transactions in 7d) — fine for MVP scale.
  */
 export async function getWeeklyLeaderboard(): Promise<WeeklyRow[]> {

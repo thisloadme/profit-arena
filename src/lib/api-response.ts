@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 /**
  * Standardized API response helpers.
  *
- * ponytail: every route used to roll its own { error: msg } shape — leading to
+ * every route used to roll its own { error: msg } shape — leading to
  * inconsistent client error handling. Centralizing gives one place to evolve
  * the contract (e.g. RFC 7807 Problem Details later) without grepping 30+ routes.
  */

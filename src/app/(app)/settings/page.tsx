@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pin, PinOff, Wallet, PiggyBank, Coins, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Pin, PinOff, Wallet, PiggyBank, Coins, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
@@ -18,7 +18,7 @@ import {
 
 const STATUS_ORDER: FinancialStatusKey[] = ["STRUGGLING", "STABLE", "COMFORTABLE", "WEALTHY"];
 
-// ponytail: visual icon + color per tier, co-located so the row reads at a glance.
+// visual icon + color per tier, co-located so the row reads at a glance.
 const STATUS_META: Record<
   FinancialStatusKey,
   { icon: typeof Wallet; ring: string; badge: string }
@@ -71,6 +71,31 @@ export default function SettingsPage() {
     setSaving(false);
     if (r.ok) { toast.success("Settings saved"); router.refresh(); }
     else toast.error(r.error);
+  }
+
+  // ── Manual liquidation ──
+  // Hard reset: sell holdings at market, terminate jobs, cancel loans, etc.
+  // Server enforces 1 game-month (43200 ticks = ~30 game-days) cooldown via
+  // lastManualLiquidateAtTick. We optimistically disable the button while
+  // pending and surface the server's error message verbatim (already
+  // human-friendly: "Cooldown active. Try again in ~N game-day(s).").
+  const [confirmingLiquidate, setConfirmingLiquidate] = useState(false);
+  const [liquidating, setLiquidating] = useState(false);
+
+  async function doLiquidate() {
+    setLiquidating(true);
+    const r = await apiFetch<{ cash: number }>("/api/me/manual-liquidate", {
+      method: "POST",
+      body: { confirm: true },
+    });
+    setLiquidating(false);
+    setConfirmingLiquidate(false);
+    if (r.ok) {
+      toast.success(`Account liquidated. New balance: $${r.data.cash.toLocaleString("en-US")}`);
+      router.refresh();
+    } else {
+      toast.error(r.error);
+    }
   }
 
   if (loading) {
@@ -211,6 +236,68 @@ export default function SettingsPage() {
           Save Settings
         </Button>
       </div>
+
+      {/* ── Danger Zone ─────────────────────────────────────────────────
+          Manual liquidation. Server enforces 1 game-month cooldown; the
+          button is always clickable so the user gets a precise server-
+          authored error (e.g. "Try again in N game-days") instead of a
+          stale local timer. */}
+      <section className="mt-6">
+        <div className="mb-2 flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3 text-loss" />
+          <h2 className="text-sm font-bold tracking-tight text-text">Danger Zone</h2>
+        </div>
+        <div className="glass-panel flex flex-col gap-3 border-loss/30 p-5">
+          <div>
+            <p className="text-sm font-bold text-text">Liquidate Account</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              Sell all holdings at market price, terminate jobs, cancel loans, deactivate
+              businesses, clear limit orders and watchlist, then reset to{" "}
+              <span className="font-semibold text-text">max(0, liquidated assets − outstanding debt)</span>{" "}
+              in cash. Achievements, transaction, and notification history are preserved.
+            </p>
+            <p className="mt-2 text-[10px] uppercase tracking-widest text-text-faint">
+              Cooldown: 1 in-game month between liquidations.
+            </p>
+          </div>
+
+          {confirmingLiquidate ? (
+            <div className="rounded-lg border border-loss/40 bg-loss/5 p-3">
+              <p className="mb-2 text-xs font-semibold text-loss">
+                This will permanently clear your portfolio, jobs, and loans. Continue?
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={doLiquidate}
+                  loading={liquidating}
+                  className="flex-1"
+                >
+                  Yes, liquidate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setConfirmingLiquidate(false)}
+                  disabled={liquidating}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="danger"
+              onClick={() => setConfirmingLiquidate(true)}
+              className="self-start"
+            >
+              Liquidate Account
+            </Button>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

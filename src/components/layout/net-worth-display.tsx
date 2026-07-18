@@ -12,7 +12,7 @@ type Props = {
 /**
  * Live net worth + cash — refreshes from server on `user:tick` socket event.
  *
- * ponytail: refetch the small dashboard endpoint rather than compute on client
+ * refetch the small dashboard endpoint rather than compute on client
  * (server-authoritative values). Cache-busting via `?t=` to bypass SWR/fetch cache.
  */
 export function NetWorthDisplay({ initial }: Props) {

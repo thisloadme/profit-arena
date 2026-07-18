@@ -1,6 +1,6 @@
 /**
  * Lightweight event tracking.
- * ponytail: console.log in dev, no-op in prod unless a provider is configured.
+ * console.log in dev, no-op in prod unless a provider is configured.
  * Swap implementation by changing this one file when adding PostHog/Plausible/etc.
  */
 

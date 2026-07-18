@@ -4,7 +4,7 @@
 -- ticks. Existing rows are converted via ::numeric casts; the migration
 -- is idempotent because every ALTER TYPE check is guarded by IF EXISTS.
 --
--- ponytail: PostgreSQL DOUBLE PRECISION → NUMERIC preserves the existing
+-- PostgreSQL DOUBLE PRECISION → NUMERIC preserves the existing
 -- value exactly (no rounding). NUMERIC(18,4) gives us 14 integer digits
 -- and 4 decimal places — enough for trillions of game-currency units.
 -- Ratios (volatility/trendFactor/interestRate) use NUMERIC(8,4) since

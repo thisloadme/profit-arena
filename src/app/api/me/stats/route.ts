@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession();
   if (!session?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  // ponytail: prevNetWorth = latest PriceHistory-anchored baseline isn't trivially
+  // prevNetWorth = latest PriceHistory-anchored baseline isn't trivially
   // available; use last Transaction of type EXPENSE as a rough "yesterday" anchor
   // until Fase 5 implements proper daily snapshots.
   const user = await prisma.user.findUniqueOrThrow({

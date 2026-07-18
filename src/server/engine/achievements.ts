@@ -18,7 +18,7 @@ type EvalCtx = {
  * Evaluate & award achievements for a single user after a tick.
  * Called from tick-scheduler.
  *
- * ponytail: one SELECT per user per tick for earned achievements.
+ * one SELECT per user per tick for earned achievements.
  * O(users × achievements) — fine for hundreds, switch to batch
  * preloading if growth demands it.
  */

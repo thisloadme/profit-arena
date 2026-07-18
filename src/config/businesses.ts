@@ -43,7 +43,7 @@ export const BUSINESS_TYPES: BusinessTypeDef[] = [
     code: "STREET_FOOD",
     label: "Street Food",
     description: "Street stall. Minimal capital, modest but steady income.",
-    setupCost: 15_000,
+    setupCost: 8_000,
     baseRevenue: 30,
     baseExpense: 12,
     revenuePerLevel: 8,
@@ -134,7 +134,7 @@ export function revenueForLevel(type: string, level: number): number {
 
 /**
  * Effective per-employee wage. Stored value 0 = fall back to type default.
- * ponytail: 0-sentinel avoids a one-time backfill migration for existing rows.
+ * 0-sentinel avoids a one-time backfill migration for existing rows.
  */
 export function effectiveWage(type: string, stored: number): number {
   const t = BIZ_MAP.get(type);
@@ -152,7 +152,7 @@ export function wageRatio(type: string, stored: number): number {
 
 /**
  * Morale derived from wage ratio — 0..100, monotonic.
- * ponytail: stored-on-the-fly, not in DB. Wage is the single source of truth;
+ * stored-on-the-fly, not in DB. Wage is the single source of truth;
  * persisting morale separately would drift from wage the moment a player edits it.
  */
 export function moraleFromWage(type: string, stored: number): number {
@@ -178,7 +178,7 @@ export function incidentChance(type: string, stored: number): number {
   const vol = t?.volatility ?? 0.2;
   const morale = moraleFromWage(type, stored);
   const moraleRisk = 1 + (100 - morale) / 60; // morale 0 → 2.67×, 100 → 1×
-  // ponytail: incident frequency is volatile per type; tune INCIDENT_BASE_CHANCE to retune globally
+  // incident frequency is volatile per type; tune INCIDENT_BASE_CHANCE to retune globally
   return clamp(INCIDENT_BASE_CHANCE * vol * 4 * moraleRisk, 0, 0.5);
 }
 
@@ -208,7 +208,7 @@ export function setupCost(type: string): number {
 
 /** Staffing adequacy vs level capacity — informational nudge. */
 export function staffingLevel(level: number, employees: number): "understaffed" | "optimal" | "overstaffed" {
-  const target = level + 1; // ponytail: heuristic — 1 employee per level + 1 baseline
+  const target = level + 1; // heuristic — 1 employee per level + 1 baseline
   if (employees < target) return "understaffed";
   if (employees > target * 2) return "overstaffed";
   return "optimal";

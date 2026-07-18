@@ -11,7 +11,7 @@ export type FinancialStatusKey = "STRUGGLING" | "STABLE" | "COMFORTABLE" | "WEAL
  * (housing, transport, staff, leisure), even though their net worth makes the
  * ratio trivial. The poor burn less dollars but feel every tick. Sultan-tier
  * players still need passive income to sustain the burn.
- * ponytail: hand-tuned tiers; keep the STRUGGLING rate high enough that an
+ * hand-tuned tiers; keep the STRUGGLING rate high enough that an
  * unemployed user visibly drains, but low enough that the default STABLE
  * job still grows net worth.
  */
@@ -62,14 +62,14 @@ export const FINANCIAL_STATUS_LABELS: Record<FinancialStatusKey, { label: string
 
 export const GAME_CONFIG = {
   /** Player starting cash. Per PRD: start from 0. Cash buffer for new player survival. */
-  STARTING_CASH: 5000,
+  STARTING_CASH: 12_000,
 
   /** Living expense baseline (STABLE tier). Other tiers see higher/lower in LIVING_EXPENSE_BY_STATUS. */
   LIVING_EXPENSE_PER_TICK: 20,
   LIVING_EXPENSE_INFLATION_PER_TICK: 0.0003, // 0.03% compounding — gentle pressure, not punishing
 
   /** Tick interval in ms (overridable via env). 1 tick = 1 game minute. */
-  TICK_INTERVAL_MS: Number(process.env.TICK_INTERVAL_MS) || 10_000,
+  TICK_INTERVAL_MS: Number(process.env.TICK_INTERVAL_MS) || 5_000,
 
   /** How many ticks in one game day (1440 min). Financial tick runs at this boundary. */
   TICKS_PER_GAME_DAY: 1440,
@@ -101,6 +101,16 @@ export const GAME_CONFIG = {
 
   /** Trade anti-cheat: max trades per user per tick. */
   MAX_TRADES_PER_TICK: 10,
+
+  /**
+   * Liquidation hook grace window: real-time days a user may sit at
+   * netWorth <= 0 before the financial tick liquidates assets, settles
+   * loans, and zeroes cash. One-shot per user (gated by isLiquidated).
+   * Real days (not game-days) keep the rule simple and predictable;
+   * game-day math would tie grace to TICK_INTERVAL_MS, which is tunable.
+   */
+  LIQUIDATION_GRACE_DAYS: 7,
+  LIQUIDATION_GRACE_MS: 7 * 24 * 60 * 60 * 1000,
 } as const;
 
 /** Number formatter for currency. */

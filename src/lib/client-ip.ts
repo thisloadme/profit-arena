@@ -1,7 +1,7 @@
 /**
  * Extract the client IP for rate limiting.
  *
- * ponytail: trust X-Forwarded-For only when the deploy is behind a known
+ * trust X-Forwarded-For only when the deploy is behind a known
  * trusted proxy (TRUST_PROXY=1). In dev / standalone, use a stable fallback
  * so attackers can't spoof a fresh IP per request. For multi-instance or
  * hostile-network deployments, swap to a real IP-resolution library.

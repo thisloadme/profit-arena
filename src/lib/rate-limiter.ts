@@ -4,7 +4,7 @@ import { getTickerState } from "@/server/engine/tick-scheduler";
 /**
  * Per-user trade rate limiter — max N trades per tick.
  *
- * ponytail: in-memory Map, reset every tick. At MVP scale (<1000 users,
+ * in-memory Map, reset every tick. At MVP scale (<1000 users,
  * <10 trades/user/tick) this uses negligible memory (~100KB). Replace
  * with Redis if multi-instance scaling is needed (Fase 13).
  */

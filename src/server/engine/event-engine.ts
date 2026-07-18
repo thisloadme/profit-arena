@@ -12,7 +12,7 @@ export type ActiveEventImpact = {
  * Roll for new events against template probabilities.
  * Called once per tick. Each template rolls independently.
  *
- * ponytail: O(templates) per tick (~10). Cheap.
+ * O(templates) per tick (~10). Cheap.
  */
 export async function rollNewEvents(now: Date): Promise<string[]> {
   const triggered: string[] = [];
@@ -59,7 +59,7 @@ export async function expireEvents(now: Date): Promise<number> {
 /**
  * Aggregate impacts for the current tick.
  *
- * ponytail: for MVP, treat all impacts as global. Per-sector routing
+ * for MVP, treat all impacts as global. Per-sector routing
  * (event only hits `STOCK` or `CRYPTO`) is a Fase 6 refinement when
  * the market UI needs sector-specific behavior. The template config
  * is preserved in `EVENT_TEMPLATES[].affectedTypes` for that upgrade.

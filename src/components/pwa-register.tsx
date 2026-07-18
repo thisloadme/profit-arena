@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-// ponytail: skip SW in dev — prevents HMR reload loops from stale cache.
+// skip SW in dev — prevents HMR reload loops from stale cache.
 const IS_DEV = process.env.NODE_ENV === "development";
 
 let deferredPrompt: Event | null = null;
@@ -13,7 +13,7 @@ export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    // ponytail: always unregister old SWs (kills reload loops from stale cache)
+    // always unregister old SWs (kills reload loops from stale cache)
     navigator.serviceWorker.getRegistrations().then((regs) => {
       if (regs.length === 0) return;
       Promise.all(regs.map((r) => r.unregister())).then(() => {

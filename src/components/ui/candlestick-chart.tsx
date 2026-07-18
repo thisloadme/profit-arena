@@ -9,7 +9,7 @@ type Props = { candles: OHLC[]; height?: number };
  * Pure SVG candlestick chart — no Recharts needed for this.
  * Green (profit) for close ≥ open, red (loss) for close < open.
  *
- * ponytail: 40 lines vs adding a charting lib. Replace with lightweight
+ * 40 lines vs adding a charting lib. Replace with lightweight
  * charting (lightweight-charts, tradingview) if users need zoom/pan.
  */
 export function CandlestickChart({ candles, height = 180 }: Props) {

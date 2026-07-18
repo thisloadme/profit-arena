@@ -12,7 +12,7 @@ import {
 
 /**
  * POST /api/feedback — submit user feedback.
- * ponytail: logs to stdout. Store in DB when volume justifies it.
+ * logs to stdout. Store in DB when volume justifies it.
  */
 export async function POST(req: Request) {
   const csrf = isCrossOriginPost(req);

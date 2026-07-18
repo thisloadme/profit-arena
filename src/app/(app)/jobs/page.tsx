@@ -301,7 +301,13 @@ export default function JobsPage() {
 /* ─────────────────────────── helpers ─────────────────────────── */
 
 function periodToMonthly(salary: number, period: PayPeriod): number {
-  return period === "MONTHLY" ? salary : salary * 4;
+  // coerce defensively. The API returns salaryPerPay as a number,
+  // but a stale client or a different route could surface it as a string
+  // (Prisma Decimal serializes via toJSON → string). Without coercion, the
+  // MONTHLY branch would return a string and `reduce(s + salary)` would
+  // collapse into string concatenation.
+  const s = Number(salary);
+  return period === "MONTHLY" ? s : s * 4;
 }
 
 function ticksToDaysLabel(ticks: number): string {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ASSET_SEEDS } from "@/config/assets";
 
-// ponytail: name lookup from seed config — no extra DB call.
+// name lookup from seed config — no extra DB call.
 const NAME_BY_SYMBOL = Object.fromEntries(ASSET_SEEDS.map((a) => [a.symbol, a.name]));
 
 export async function GET() {

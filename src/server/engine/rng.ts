@@ -4,7 +4,7 @@ import crypto from "node:crypto";
  * Crypto-secure Gaussian random via Box-Muller transform.
  * Returns a sample from N(0, 1).
  *
- * ponytail: stdlib doesn't expose crypto-secure Gaussian; Box-Muller is the
+ * stdlib doesn't expose crypto-secure Gaussian; Box-Muller is the
  * textbook 10-line implementation. Ceiling: if you need millions/sec,
  * switch to a ziggurat table — but RNG isn't the bottleneck here.
  */

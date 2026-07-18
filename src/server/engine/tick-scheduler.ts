@@ -18,7 +18,7 @@ type State = {
   inTick: boolean; // mutex
 };
 
-// ponytail: globalThis singleton — tsx creates separate module instances per import.
+// globalThis singleton — tsx creates separate module instances per import.
 const KEY = "__ticker_state__";
 function getState(): State {
   if (!(globalThis as Record<string, unknown>)[KEY]) {
@@ -47,7 +47,7 @@ function scheduleNext() {
  * run financial updates, broadcast to all connected clients.
  *
  * Mutex via `inTick` boolean — if previous tick still running, this one is skipped.
- * ponytail: global lock. Per-user locks would help if financial-tick becomes a
+ * global lock. Per-user locks would help if financial-tick becomes a
  * bottleneck, but at MVP scale the global flag is the cheapest correct option.
  */
 export async function runOneTick(): Promise<void> {

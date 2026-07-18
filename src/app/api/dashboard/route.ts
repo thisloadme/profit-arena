@@ -5,7 +5,7 @@ import { getActiveEvents } from "@/server/engine/event-engine";
 
 /**
  * Dashboard aggregation endpoint.
- * ponytail: single fetch, one round-trip per tick. Split when any sub-section
+ * single fetch, one round-trip per tick. Split when any sub-section
  * becomes a bottleneck (unlikely at MVP scale).
  *
  * ?timeframe=1d|1w|1M|1Y|ALL  — controls sparkline range & implicit prevNetWorth.
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   if (!session?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const uid = session.sub;
 
-  // ponytail: days-map for timeframe. ALL uses earliest txn date.
+  // days-map for timeframe. ALL uses earliest txn date.
   // Days is constrained to a finite number — no string concat into SQL.
   const { searchParams } = new URL(req.url);
   const tf = searchParams.get("timeframe") ?? "1M";
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
   }));
 
   // Sparkline: compute running netWorth over the requested range.
-  // ponytail: rebase from (netWorth - Σ net) then walk forward per day.
+  // rebase from (netWorth - Σ net) then walk forward per day.
   const txnsByDay = new Map<string, number>();
   let totalFromTxns = 0;
   for (const tx of txns as { day: Date; net: number }[]) {

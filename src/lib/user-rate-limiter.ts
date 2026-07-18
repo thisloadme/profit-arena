@@ -1,7 +1,7 @@
 /**
  * Generic per-user sliding-window rate limiter.
  *
- * ponytail: in-memory Map, 60s window. Coarse protection against spam on
+ * in-memory Map, 60s window. Coarse protection against spam on
  * financial / mutation endpoints. Trade-specific uses GAME_CONFIG.MAX_TRADES_PER_TICK;
  * this is the catch-all for everything else. Same caveat as auth-rate-limiter:
  * replace with Redis for multi-instance.
