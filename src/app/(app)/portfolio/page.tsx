@@ -92,7 +92,11 @@ export default function PortfolioPage() {
     });
   }, []);
 
-  const sorted = order.map((sym) => assets.find((a) => a.symbol === sym)!).filter(Boolean);
+  // Order list may include symbols whose assets aren't loaded yet (race during
+  // navigation). Filter to assets actually present to avoid undefined.reduce.
+  const sorted = order
+    .map((sym) => assets.find((a) => a.symbol === sym))
+    .filter((a): a is NonNullable<typeof a> => a !== undefined);
 
   const totalValue = sorted.reduce((s, a) => s + a.quantity * a.currentPrice, 0);
   const totalCost = sorted.reduce((s, a) => s + a.quantity * a.averagePrice, 0);

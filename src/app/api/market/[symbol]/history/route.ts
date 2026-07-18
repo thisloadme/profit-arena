@@ -34,7 +34,7 @@ export async function GET(
   }
 
   // Oldest → newest. `currentTick` = game-minute index of the newest row.
-  const reversed = history.reverse();
+  const reversed = history.map((r) => ({ price: Number(r.price) })).reverse();
   const currentTick = await getCurrentTick();
   const oldestTick = currentTick - (reversed.length - 1);
 

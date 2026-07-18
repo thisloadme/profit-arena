@@ -36,8 +36,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           user={{ username: user.username }}
-          netWorth={user.netWorth}
-          cash={user.cash}
+          netWorth={Number(user.netWorth)}
+          cash={Number(user.cash)}
           changePct={0}
           ticker={{ running: ticker.running, gameTimeMs: ticker.gameTimeMs }}
         />

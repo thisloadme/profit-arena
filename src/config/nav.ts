@@ -20,8 +20,8 @@ export type NavItem = {
 
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "d" },
-  { href: "/market", label: "Market", icon: CandlestickChart, shortcut: "m" },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase, shortcut: "p" },
+  { href: "/market", label: "Market", icon: CandlestickChart, shortcut: "m" },
   { href: "/business", label: "Business", icon: Store, shortcut: "b" },
   { href: "/jobs", label: "Jobs", icon: GraduationCap, shortcut: "j" },
   { href: "/lending", label: "Lending", icon: HandCoins, shortcut: "l" },

@@ -87,7 +87,9 @@ export default function JobsPage() {
   }
 
   useEffect(() => {
-    load();
+    // Defer the initial fetch so setState lands in an async callback, not
+    // synchronously in the effect body (React 19 rule).
+    queueMicrotask(load);
   }, []);
 
   async function apply(jobId: string) {
@@ -236,9 +238,16 @@ export default function JobsPage() {
                 {history.length === 0 ? (
                   <EmptyPanel icon={<HistoryIcon className="h-8 w-8" />} text="No past jobs yet." subtle />
                 ) : (
-                  <div className="glass-panel divide-y divide-border/50">
-                    {history.slice(0, 8).map((e) => <HistoryRow key={e.id} e={e} />)}
-                  </div>
+                  <>
+                    <div className="glass-panel divide-y divide-border/50">
+                      {history.slice(0, 8).map((e) => <HistoryRow key={e.id} e={e} />)}
+                    </div>
+                    {history.length > 8 && (
+                      <p className="mt-2 text-center text-[10px] text-text-faint">
+                        Showing 8 of {history.length}. Full history in /history.
+                      </p>
+                    )}
+                  </>
                 )}
               </section>
             </div>
@@ -311,7 +320,7 @@ function SectionLabel({ icon, title, meta }: { icon: React.ReactNode; title: str
         <span className="text-text-faint">{icon}</span>
         <h2 className="text-sm font-bold tracking-tight text-text">{title}</h2>
       </div>
-      {meta && <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-faint">{meta}</span>}
+      {meta && <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-faint pl-2">{meta}</span>}
     </div>
   );
 }

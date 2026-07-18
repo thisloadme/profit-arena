@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { checkTradeLimit } from "@/lib/rate-limiter";
 import { GAME_CONFIG } from "@/config/game";
 import { isMarketOpen } from "@/server/engine/tick-scheduler";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
 
 const buySchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -18,6 +19,9 @@ const buySchema = z.object({
  * the ACID window short. Rate limit: max N trades per tick.
  */
 export async function POST(req: Request) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const session = await getSession();
   if (!session?.sub) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -47,13 +51,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
-  const totalCost = market.currentPrice * quantity;
+  const totalCost = Number(market.currentPrice) * quantity;
+  // Fast-path friendly check (real guard is the atomic conditional write below).
   const user = await prisma.user.findUnique({
     where: { id: session.sub },
     select: { cash: true },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-  if (user.cash < totalCost) {
+  if (Number(user.cash) < totalCost) {
     return NextResponse.json(
       { error: `Insufficient balance. Need ${totalCost.toLocaleString("en-US")}` },
       { status: 422 },
@@ -77,12 +82,16 @@ export async function POST(req: Request) {
     });
   }
 
-  // All good — do the atomic write.
+  // Atomic write: decrement cash only if the user still has enough.
+  // This is the real guard against the TOCTOU race — two concurrent buys
+  // can't both succeed once cash is spent, because updateMany's WHERE is
+  // evaluated atomically inside the transaction.
   const trade = await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: session.sub },
+    const spent = await tx.user.updateMany({
+      where: { id: session.sub, cash: { gte: totalCost } },
       data: { cash: { decrement: totalCost } },
     });
+    if (spent.count === 0) throw new Error("INSUFFICIENT_BALANCE");
 
     const existing = await tx.asset.findUnique({
       where: { userId_symbol: { userId: session.sub, symbol } },
@@ -90,9 +99,10 @@ export async function POST(req: Request) {
     });
 
     if (existing) {
-      const newQty = existing.quantity + quantity;
-      const newAvg =
-        (existing.averagePrice * existing.quantity + market.currentPrice * quantity) / newQty;
+      const curQty = Number(existing.quantity);
+      const curAvg = Number(existing.averagePrice);
+      const newQty = curQty + quantity;
+      const newAvg = (curAvg * curQty + Number(market.currentPrice) * quantity) / newQty;
       await tx.asset.update({
         where: { id: existing.id },
         data: { quantity: newQty, averagePrice: newAvg, currentPrice: market.currentPrice },
@@ -122,7 +132,17 @@ export async function POST(req: Request) {
     });
 
     return { cost: totalCost, quantity, symbol, price: market.currentPrice };
+  }).catch((e: unknown) => {
+    if (e instanceof Error && e.message === "INSUFFICIENT_BALANCE") return null;
+    throw e;
   });
+
+  if (!trade) {
+    return NextResponse.json(
+      { error: `Insufficient balance. Need ${totalCost.toLocaleString("en-US")}` },
+      { status: 422 },
+    );
+  }
 
   // ponytail: first trade tracking for analytics
   console.log("[event] buy", { userId: session.sub, symbol, quantity, cost: totalCost });

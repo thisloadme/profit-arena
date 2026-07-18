@@ -21,9 +21,18 @@ type MarketItem = {
   symbol: string;
   name: string;
   type: string;
-  price: number;
-  volatility: number;
+  // price may arrive as number (current API) or string (stale cache or a
+  // previous Decimal-serialized payload). Use toPrice() before arithmetic.
+  price: number | string;
+  volatility: number | string;
 };
+
+// Coerce a price-like value (number | string | Prisma.Decimal) to number.
+// Defensive: handles stale cache, server returns string (e.g. JSON.parse on a
+// serialized Decimal), or any future change that loses the numeric type.
+function toPrice(v: number | string): number {
+  return typeof v === "number" ? v : Number(v);
+}
 
 const TABS = ["All", "STOCK", "CRYPTO", "BOND", "MUTUAL_FUND"] as const;
 const TAB_LABEL: Record<string, string> = {
@@ -295,7 +304,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
   const [chartMode, setChartMode] = useState<"line" | "candle">("line");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [orderType, setOrderType] = useState<OrderType>("market");
-  const [limitPrice, setLimitPrice] = useState<string>(item.price.toFixed(2));
+  const [limitPrice, setLimitPrice] = useState<string>(toPrice(item.price).toFixed(2));
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -309,7 +318,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
     return () => ctrl.abort();
   }, [item.symbol, timeframe]);
 
-  const orderTotal = item.price * quantity;
+  const orderTotal = toPrice(item.price) * quantity;
   const limitTotal = parseFloat(limitPrice) * quantity || 0;
   const lineData = candles.map((c) => ({ time: c.time, price: c.close }));
 
@@ -320,7 +329,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
   const editedRef = useRef(false);
   useEffect(() => {
     if (editedRef.current) return;
-    setLimitPrice(item.price.toFixed(2));
+    setLimitPrice(toPrice(item.price).toFixed(2));
   }, [item.price]);
 
   async function toggleWatch() {
@@ -398,7 +407,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
         <div className="relative z-10 mt-4 flex items-end justify-between">
           <div className="flex flex-col">
             <span className="tnum text-3xl font-black tracking-tight text-text">
-              <Money value={item.price} compact />
+              <Money value={toPrice(item.price)} compact />
             </span>
             <span className={cn("tnum mt-0.5 flex items-center gap-1 text-sm font-bold", changePct >= 0 ? "text-profit" : "text-loss")}>
               {changePct >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
@@ -532,7 +541,7 @@ function MarketDetail({ item, changePct, stockOpen, watched, onWatchChange }: De
               />
             </div>
             <button
-              onClick={() => setLimitPrice(item.price.toFixed(2))}
+              onClick={() => setLimitPrice(toPrice(item.price).toFixed(2))}
               className="h-9 rounded-md border border-border px-2 text-[10px] font-semibold text-text-muted transition-colors hover:bg-soft hover:text-text"
               title="Set to market price"
             >MID</button>

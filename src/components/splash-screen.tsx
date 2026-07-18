@@ -17,14 +17,16 @@ const MIN_VISIBLE_MS = 600;
  * would be the most annoying failure mode of an every-reload splash.
  */
 export function SplashScreen() {
-  const [show, setShow] = useState(true);
+  // Lazy init from the global flag so we don't setState synchronously in the
+  // effect body (React 19 rule). If the splash was already shown this session,
+  // start hidden immediately.
+  const [show, setShow] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !(window as Window & { __splashShown?: number }).__splashShown;
+  });
 
   useEffect(() => {
-    const dismissedAt = (window as Window & { __splashShown?: number }).__splashShown;
-    if (dismissedAt) {
-      setShow(false);
-      return;
-    }
+    if (!show) return;
 
     const start = Date.now();
     const dismiss = () => {
@@ -39,6 +41,7 @@ export function SplashScreen() {
     if (document.readyState === "complete") dismiss();
     else window.addEventListener("load", dismiss, { once: true });
     return () => window.removeEventListener("load", dismiss);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

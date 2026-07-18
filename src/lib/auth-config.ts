@@ -10,5 +10,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 export const JWT_ALG = "HS256";
 
 export function getAuthSecret(): Uint8Array {
-  return new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error("NEXTAUTH_SECRET is not set");
+  return new TextEncoder().encode(secret);
 }

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyPassword, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, setSessionCookie, bumpTokenVersion } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limiter";
+import { getClientIp } from "@/lib/client-ip";
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(req);
   if (!checkAuthRateLimit(ip)) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, username: true, email: true, passwordHash: true },
+    select: { id: true, username: true, email: true, passwordHash: true, tokenVersion: true },
   });
   if (!user?.passwordHash) {
     return NextResponse.json({ error: "Incorrect email or password" }, { status: 401 });
@@ -39,12 +40,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Incorrect email or password" }, { status: 401 });
   }
 
+  // Bump tokenVersion so any pre-existing session (e.g. on another device)
+  // is invalidated; embed the fresh version in this session's JWT.
+  const tokenVersion = await bumpTokenVersion(user.id);
+
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
 
-  await setSessionCookie({ sub: user.id, username: user.username, email: user.email });
+  await setSessionCookie({
+    sub: user.id,
+    username: user.username,
+    email: user.email,
+    tokenVersion,
+  });
 
   return NextResponse.json({ ok: true, user: { id: user.id, username: user.username } });
 }

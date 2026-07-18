@@ -20,13 +20,16 @@ model User {
   lastLoginAt  DateTime?
 
   // Financial Summary (denormalized for performance, updated via triggers or jobs)
-  netWorth    Float @default(0)
-  totalAssets Float @default(0)
-  totalDebt   Float @default(0)
-  cash        Float @default(0)
+  netWorth    Decimal @db.Decimal(18, 4) @default(0)
+  totalAssets Decimal @db.Decimal(18, 4) @default(0)
+  totalDebt   Decimal @db.Decimal(18, 4) @default(0)
+  cash        Decimal @db.Decimal(18, 4) @default(0)
 
   financialStatus     FinancialStatus  @default(STABLE)
   financialStatusManual Boolean         @default(false)
+
+  // Bumped on login + logout to invalidate outstanding session JWTs.
+  tokenVersion Int @default(0)
 
   profile          UserProfile?
   assets           Asset[]
@@ -43,6 +46,7 @@ model User {
   watchedAssets    WatchedAsset[]
   limitOrders      LimitOrder[]
 
+  @@index([netWorth])
   @@map("users")
 }
 
@@ -81,9 +85,9 @@ model Asset {
   type         AssetType
   symbol       String // e.g., "AAPL", "BTC", "GOVT_BOND"
   name         String
-  quantity     Float
-  averagePrice Float
-  currentPrice Float // denormalized, updated periodically
+  quantity     Decimal @db.Decimal(18, 4)
+  averagePrice Decimal @db.Decimal(18, 4)
+  currentPrice Decimal @db.Decimal(18, 4) // denormalized, updated periodically
   lastUpdated  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -96,9 +100,9 @@ model MarketData {
   id           String    @id @default(uuid()) @db.Uuid
   symbol       String    @unique
   type         AssetType
-  currentPrice Float
-  volatility   Float // 0.0 - 1.0
-  trendFactor  Float // macro influence -1.0 to 1.0
+  currentPrice Decimal @db.Decimal(18, 4)
+  volatility   Decimal @db.Decimal(8, 4) // 0.0 - 1.0
+  trendFactor  Decimal @db.Decimal(8, 4) // macro influence -1.0 to 1.0
   lastUpdated  DateTime  @updatedAt
 
   @@map("market_data")
@@ -110,17 +114,18 @@ model Business {
   name           String
   type           String // Cafe, TechStartup, Retail, etc.
   level          Int      @default(1)
-  revenuePerTick Float    @default(0)
-  expensePerTick Float    @default(0)
+  revenuePerTick Decimal @db.Decimal(18, 4) @default(0)
+  expensePerTick Decimal @db.Decimal(18, 4) @default(0)
   employeeCount  Int      @default(1)
   isActive       Boolean  @default(true)
-  salaryPerEmployee Float  @default(0) // 0 = use type default; player-tunable otherwise
+  salaryPerEmployee Decimal @db.Decimal(18, 4) @default(0) // 0 = use type default; player-tunable otherwise
   createdAt      DateTime @default(now())
   createdAtTick  Int      @default(0) // game tick when created
   updatedAt      DateTime @updatedAt
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
+  @@index([ownerId, isActive])
   @@map("businesses")
 }
 
@@ -130,7 +135,7 @@ model Employment {
   jobId           String?          @db.Uuid
   companyName     String
   position        String
-  salaryPerPay    Float
+  salaryPerPay    Decimal @db.Decimal(18, 4)
   payPeriod       PayPeriod        @default(WEEKLY)
   workStartHour   Int              @default(9)
   workEndHour     Int              @default(17)
@@ -166,7 +171,7 @@ model Job {
   title         String
   company       String
   tier          String // ENTRY | MID | SENIOR
-  salaryPerPay  Float
+  salaryPerPay  Decimal @db.Decimal(18, 4)
   payPeriod     PayPeriod
   workStartHour Int      @default(9)
   workEndHour   Int      @default(17)
@@ -184,10 +189,10 @@ model Loan {
   id              String     @id @default(uuid()) @db.Uuid
   lenderId        String     @db.Uuid
   borrowerId      String?    @db.Uuid
-  amount          Float
-  interestRate    Float // monthly percentage
+  amount          Decimal @db.Decimal(18, 4)
+  interestRate    Decimal @db.Decimal(8, 4) // monthly percentage
   tenorMonths     Int
-  remainingAmount Float
+  remainingAmount Decimal @db.Decimal(18, 4)
   status          LoanStatus @default(PENDING)
   createdAt       DateTime   @default(now())
   dueDate         DateTime?
@@ -195,6 +200,9 @@ model Loan {
   lender   User  @relation("LoanLender", fields: [lenderId], references: [id])
   borrower User? @relation("LoanBorrower", fields: [borrowerId], references: [id])
 
+  @@index([lenderId])
+  @@index([borrowerId])
+  @@index([status, dueDate])
   @@map("loans")
 }
 
@@ -209,13 +217,14 @@ model Transaction {
   id           String          @id @default(uuid()) @db.Uuid
   userId       String          @db.Uuid
   type         TransactionType
-  amount       Float
+  amount       Decimal @db.Decimal(18, 4)
   description  String
   relatedAsset String? // symbol if related to asset
   createdAt    DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
   @@map("transactions")
 }
 
@@ -241,6 +250,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, isRead, createdAt])
   @@map("notifications")
 }
 
@@ -248,7 +258,7 @@ model GameEvent {
   id           String    @id @default(uuid()) @db.Uuid
   eventType    String
   description  String
-  impactFactor Float // global impact
+  impactFactor Decimal @db.Decimal(8, 4) // global impact
   startAt      DateTime
   endAt        DateTime?
   isActive     Boolean   @default(true)
@@ -260,7 +270,7 @@ model GameEvent {
 model PriceHistory {
   id     String   @id @default(uuid()) @db.Uuid
   symbol String
-  price  Float
+  price  Decimal @db.Decimal(18, 4)
   tickAt DateTime @default(now())
 
   @@index([symbol, tickAt])
@@ -300,7 +310,7 @@ model LeaderboardSnapshot {
   userId     String            @db.Uuid
   period     LeaderboardPeriod
   rank       Int
-  netWorth   Float
+  netWorth   Decimal @db.Decimal(18, 4)
   prevRank   Int?
   snapshotAt DateTime          @default(now())
 
@@ -345,7 +355,7 @@ model Quest {
   title       String
   description String
   targetCount Int    @default(1)
-  rewardCash  Float  @default(0)
+  rewardCash  Decimal @db.Decimal(18, 4) @default(0)
 
   userQuests UserQuest[]
 
@@ -397,8 +407,8 @@ model LimitOrder {
   userId     String      @db.Uuid
   symbol     String
   type       OrderType
-  quantity   Float
-  limitPrice Float?
+  quantity   Decimal @db.Decimal(18, 4)
+  limitPrice Decimal? @db.Decimal(18, 4)
   status     OrderStatus @default(PENDING)
   createdAt  DateTime    @default(now())
   executedAt DateTime?

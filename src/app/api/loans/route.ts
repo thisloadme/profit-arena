@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { GAME_CONFIG } from "@/config/game";
+import { checkUserRateLimit } from "@/lib/user-rate-limiter";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
+import {
+  apiError,
+  apiOk,
+  apiTooManyRequests,
+  apiUnauthorized,
+} from "@/lib/api-response";
 
 const createOfferSchema = z.object({
   amount: z.number().positive(),
@@ -14,19 +21,22 @@ const createOfferSchema = z.object({
  * POST /api/loans — create a P2P lending offer.
  */
 export async function POST(req: Request) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const s = await getSession();
-  if (!s?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!s?.sub) return apiUnauthorized();
+  if (!checkUserRateLimit(s.sub, 10)) return apiTooManyRequests();
 
   const parsed = createOfferSchema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
+  if (!parsed.success) return apiError(422, parsed.error.issues[0]?.message ?? "Invalid");
   const { amount, interestRate, tenorMonths } = parsed.data;
 
   // Check cash (lender must have the money)
   const user = await prisma.user.findUnique({ where: { id: s.sub }, select: { cash: true } });
-  if (!user || user.cash < amount) return NextResponse.json(
-    { error: `Saldo tidak cukup. Butuh ${amount.toLocaleString("id-ID")}` },
-    { status: 422 },
-  );
+  if (!user || Number(user.cash) < amount) {
+    return apiError(422, `Insufficient balance. Need ${amount.toLocaleString("id-ID")}`);
+  }
 
   const offer = await prisma.loan.create({
     data: {
@@ -38,7 +48,7 @@ export async function POST(req: Request) {
       status: "PENDING",
     },
   });
-  return NextResponse.json({ ok: true, loan: offer });
+  return apiOk({ loan: offer });
 }
 
 /**
@@ -48,7 +58,7 @@ export async function POST(req: Request) {
  */
 export async function GET(req: Request) {
   const s = await getSession();
-  if (!s?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!s?.sub) return apiUnauthorized();
 
   const { searchParams } = new URL(req.url);
   const list = searchParams.get("list") ?? "mine";
@@ -60,7 +70,7 @@ export async function GET(req: Request) {
       take: 50,
       include: { lender: { select: { username: true } } },
     });
-    return NextResponse.json({ loans: offers });
+    return NextResponse.json({ loans: offers.map(decimalizeLoan) });
   }
 
   // mine
@@ -76,5 +86,15 @@ export async function GET(req: Request) {
       include: { lender: { select: { username: true } } },
     }),
   ]);
-  return NextResponse.json({ given, taken });
+  return NextResponse.json({ given: given.map(decimalizeLoan), taken: taken.map(decimalizeLoan) });
+}
+
+/** Coerce Decimal money/ratio fields on a Loan (and nested lender/borrower) to numbers. */
+function decimalizeLoan<T extends Record<string, unknown>>(loan: T): T {
+  const out: Record<string, unknown> = { ...loan };
+  for (const k of ["amount", "interestRate", "remainingAmount"]) {
+    const v = out[k];
+    if (v && typeof v === "object" && "toNumber" in v) out[k] = (v as { toNumber: () => number }).toNumber();
+  }
+  return out as T;
 }

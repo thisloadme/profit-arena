@@ -67,7 +67,103 @@ export async function runFinancialTick(opts: {
   const updatedIds: string[] = [];
   const allNotifications: { userId: string; title: string; message: string }[] = [];
 
-  for (const u of users) {
+  // ponytail: per-user ACID is preserved (one bad row shouldn't roll back
+  // everyone). Process users in bounded-parallel batches so we don't hammer
+  // Postgres with N concurrent connections at scale.
+  const BATCH = 10;
+  for (let i = 0; i < users.length; i += BATCH) {
+    const slice = users.slice(i, i + BATCH);
+    await Promise.all(
+      slice.map((u) => processOneUser({
+        id: u.id,
+        cash: Number(u.cash),
+        financialStatus: u.financialStatus,
+        financialStatusManual: u.financialStatusManual,
+        assets: u.assets.map((a) => ({
+          symbol: a.symbol,
+          quantity: Number(a.quantity),
+          currentPrice: Number(a.currentPrice),
+        })),
+        businesses: u.businesses.map((b) => ({
+          id: b.id,
+          type: b.type,
+          name: b.name,
+          revenuePerTick: Number(b.revenuePerTick),
+          expensePerTick: Number(b.expensePerTick),
+          createdAtTick: b.createdAtTick,
+          salaryPerEmployee: Number(b.salaryPerEmployee),
+        })),
+        employments: u.employments.map((e) => ({
+          id: e.id,
+          salaryPerPay: Number(e.salaryPerPay),
+          payPeriod: e.payPeriod,
+          nextPayAtTick: e.nextPayAtTick,
+          status: e.status,
+          noticeUntilTick: e.noticeUntilTick,
+          position: e.position,
+          companyName: e.companyName,
+        })),
+        loansTaken: u.loansTaken.map((l) => ({
+          id: l.id,
+          remainingAmount: Number(l.remainingAmount),
+          interestRate: Number(l.interestRate),
+          amount: Number(l.amount),
+          tenorMonths: l.tenorMonths,
+        })),
+      }, tickNumber, isMonthBoundary)
+      .then((r) => {
+        if (r) {
+          updatedIds.push(r.id);
+          for (const n of r.notifications) allNotifications.push(n);
+        }
+      })));
+  }
+
+  return { usersProcessed: users.length, updatedUserIds: updatedIds, notifications: allNotifications };
+}
+
+/**
+ * Run the per-user financial computation. Returns the user's id + collected
+ * notifications on success, or null on failure (isolated from other users).
+ */
+async function processOneUser(
+  u: {
+    id: string;
+    cash: number;
+    financialStatus: string;
+    financialStatusManual: boolean;
+    assets: { symbol: string; quantity: number; currentPrice: number }[];
+    businesses: {
+      id: string;
+      type: string;
+      name: string;
+      revenuePerTick: number;
+      expensePerTick: number;
+      createdAtTick: number;
+      salaryPerEmployee: number;
+    }[];
+    employments: {
+      id: string;
+      salaryPerPay: number;
+      payPeriod: string;
+      nextPayAtTick: number;
+      status: string;
+      noticeUntilTick: number | null;
+      position: string;
+      companyName: string;
+    }[];
+    loansTaken: {
+      id: string;
+      remainingAmount: number;
+      interestRate: number;
+      amount: number;
+      tenorMonths: number;
+    }[];
+  },
+  tickNumber: number,
+  isMonthBoundary: boolean,
+): Promise<{ id: string; notifications: { userId: string; title: string; message: string }[] } | null> {
+  try {
     let cash = u.cash;
 
     // ── Jobs: periodic salary payment (FR-29). Salary does NOT pay per-tick;
@@ -93,7 +189,7 @@ export async function runFinancialTick(opts: {
           amount: e.salaryPerPay,
           description: `Salary — ${e.position} @ ${e.companyName}`,
         });
-        const next = e.nextPayAtTick + payPeriodTicks(e.payPeriod);
+        const next = e.nextPayAtTick + payPeriodTicks(e.payPeriod as "WEEKLY" | "MONTHLY");
         const statusUpdate = e.status === "NOTICE" ? { status: "NOTICE" as const } : {};
         const noticeUpdate =
           e.noticeUntilTick !== null && e.noticeUntilTick !== undefined
@@ -313,9 +409,10 @@ export async function runFinancialTick(opts: {
       }
     });
 
-    updatedIds.push(u.id);
-    for (const n of notifications) allNotifications.push({ userId: u.id, ...n });
+    return { id: u.id, notifications: notifications.map((n) => ({ userId: u.id, ...n })) };
+  } catch (err) {
+    // One user's failure must not break the whole tick — log and skip.
+    console.error("[financial-tick] user failed", u.id, err);
+    return null;
   }
-
-  return { usersProcessed: users.length, updatedUserIds: updatedIds, notifications: allNotifications };
 }

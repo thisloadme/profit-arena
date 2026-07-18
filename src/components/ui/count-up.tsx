@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { animate, motion, useMotionValue, useTransform } from "framer-motion";
+import { animate } from "framer-motion";
 import { cn } from "@/lib/cn";
 
 type Props = {

@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     prisma.marketData.findMany({
       orderBy: { type: "asc" },
       select: { symbol: true, type: true, currentPrice: true, lastUpdated: true },
-    }),
+    }).then((rows) => rows.map((r) => ({ ...r, currentPrice: Number(r.currentPrice) }))),
     getActiveEvents(),
     prisma.transaction.findMany({
       where: { userId: uid },
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     txnsByDay.set(key, (txnsByDay.get(key) ?? 0) + Number(tx.net));
     totalFromTxns += Number(tx.net);
   }
-  const baseNetWorth = user.netWorth - totalFromTxns;
+  const baseNetWorth = Number(user.netWorth) - totalFromTxns;
   const now = new Date();
   const thirtyAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sparkline: { date: string; value: number }[] = [];
@@ -81,8 +81,9 @@ export default async function DashboardPage() {
   // Asset allocation
   const allocMap = new Map<string, { value: number; invested: number }>();
   for (const a of assetsWithPrice) {
-    const val = a.quantity * a.currentPrice;
-    const cost = a.quantity * a.averagePrice;
+    const qty = Number(a.quantity);
+    const val = qty * Number(a.currentPrice);
+    const cost = qty * Number(a.averagePrice);
     const ex = allocMap.get(a.type) ?? { value: 0, invested: 0 };
     ex.value += val;
     ex.invested += cost;
@@ -122,10 +123,10 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-baseline gap-4 text-xs">
           <span className="text-text-faint">
-            Assets <Money value={user.totalAssets} compact className="tnum font-medium text-text" />
+            Assets <Money value={Number(user.totalAssets)} compact className="tnum font-medium text-text" />
           </span>
           <span className="text-text-faint">
-            Debt <Money value={user.totalDebt} compact className="tnum font-medium text-loss" />
+            Debt <Money value={Number(user.totalDebt)} compact className="tnum font-medium text-loss" />
           </span>
         </div>
       </header>
@@ -135,8 +136,8 @@ export default async function DashboardPage() {
         {/* Left: net worth chart grows + module links strip */}
         <div className="flex min-h-0 flex-col gap-4 lg:col-span-7">
           <NetWorthHero
-            netWorth={user.netWorth}
-            prevNetWorth={sparkline.length > 1 ? sparkline[sparkline.length - 2]!.value : user.netWorth}
+            netWorth={Number(user.netWorth)}
+            prevNetWorth={sparkline.length > 1 ? sparkline[sparkline.length - 2]!.value : Number(user.netWorth)}
             sparkline={sparkline}
             className="min-h-0 flex-1"
           />
@@ -203,7 +204,7 @@ export default async function DashboardPage() {
                         </p>
                       </div>
                       <Money
-                        value={tx.amount}
+                        value={Number(tx.amount)}
                         compact
                         signed
                         className={cn("tnum text-xs font-semibold", TYPE_COLORS[tx.type] ?? "text-text")}

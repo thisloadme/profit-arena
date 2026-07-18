@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { checkTradeLimit } from "@/lib/rate-limiter";
 import { GAME_CONFIG } from "@/config/game";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
 
 const limitSchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -13,6 +14,9 @@ const limitSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const session = await getSession();
   if (!session?.sub) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

@@ -4,9 +4,10 @@ import { registerSchema } from "@/lib/validations";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { GAME_CONFIG } from "@/config/game";
 import { checkAuthRateLimit } from "@/lib/auth-rate-limiter";
+import { getClientIp } from "@/lib/client-ip";
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(req);
   if (!checkAuthRateLimit(ip)) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
@@ -29,11 +30,11 @@ export async function POST(req: Request) {
 
   const exists = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
-    select: { email: true, username: true },
+    select: { id: true },
   });
   if (exists) {
-    const field = exists.email === email ? "Email" : "Username";
-    return NextResponse.json({ error: `${field} already registered` }, { status: 409 });
+    // Generic message — don't leak which field collided (prevents enumeration).
+    return NextResponse.json({ error: "Email or username already registered" }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);
@@ -50,8 +51,13 @@ export async function POST(req: Request) {
     select: { id: true, username: true, email: true },
   });
 
-  // Auto-login on register.
-  await setSessionCookie({ sub: user.id, username: user.username, email: user.email });
+  // Auto-login on register. New users start at tokenVersion 0.
+  await setSessionCookie({
+    sub: user.id,
+    username: user.username,
+    email: user.email,
+    tokenVersion: 0,
+  });
 
   console.log("[event] register", { userId: user.id, username: user.username });
 

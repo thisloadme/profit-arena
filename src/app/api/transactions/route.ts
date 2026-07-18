@@ -19,7 +19,8 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const cursor = searchParams.get("cursor") ?? undefined;
-  const take = Math.min(100, parseInt(searchParams.get("take") ?? "25"));
+  const takeRaw = parseInt(searchParams.get("take") ?? "25", 10);
+  const take = Number.isFinite(takeRaw) && takeRaw > 0 ? Math.min(100, takeRaw) : 25;
   const type = searchParams.get("type") ?? undefined;
   const from = searchParams.get("from") ?? undefined;
   const to = searchParams.get("to") ?? undefined;
@@ -44,9 +45,11 @@ export async function GET(req: Request) {
   const rows = hasNext ? items.slice(0, take) : items;
   const nextCursor = hasNext ? rows[rows.length - 1]?.id : null;
 
+  const rowsSerialized = rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+
   if (isCsv) {
     const header = "id,type,amount,description,relatedAsset,createdAt\n";
-    const body = rows
+    const body = rowsSerialized
       .map((r) =>
         [r.id, r.type, r.amount, `"${r.description}"`, r.relatedAsset ?? "", r.createdAt.toISOString()].join(","),
       )
@@ -59,5 +62,5 @@ export async function GET(req: Request) {
     });
   }
 
-  return NextResponse.json({ rows, nextCursor, hasNext });
+  return NextResponse.json({ rows: rowsSerialized, nextCursor, hasNext });
 }

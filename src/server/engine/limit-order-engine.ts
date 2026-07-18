@@ -16,10 +16,18 @@ import { isMarketOpen } from "./tick-scheduler";
  * index on (status, symbol) keeps it fast — at MVP scale, negligible.
  */
 export async function executeLimitOrders(): Promise<void> {
-  const orders = await prisma.limitOrder.findMany({
+  const ordersRaw = await prisma.limitOrder.findMany({
     where: { status: "PENDING" },
     select: { id: true, userId: true, symbol: true, type: true, quantity: true, limitPrice: true },
   });
+  const orders = ordersRaw.map((o) => ({
+    id: o.id,
+    userId: o.userId,
+    symbol: o.symbol,
+    type: o.type,
+    quantity: o.limitPrice === null ? 0 : Number(o.quantity),
+    limitPrice: o.limitPrice === null ? null : Number(o.limitPrice),
+  }));
   if (orders.length === 0) return;
 
   // Group by symbol, fetch market prices once
@@ -28,7 +36,7 @@ export async function executeLimitOrders(): Promise<void> {
     where: { symbol: { in: symbols } },
     select: { symbol: true, currentPrice: true, type: true },
   });
-  const priceMap = new Map(markets.map((m) => [m.symbol, { price: m.currentPrice, type: m.type }]));
+  const priceMap = new Map(markets.map((m) => [m.symbol, { price: Number(m.currentPrice), type: m.type }]));
 
   const toExecute: typeof orders = [];
 
@@ -56,27 +64,36 @@ export async function executeLimitOrders(): Promise<void> {
 
     try {
       if (o.type === "BUY") {
-        // Check cash
+        // Check cash (fast-path). The real guard is the atomic conditional
+        // decrement inside the txn — protects against concurrent ticks and
+        // the user draining cash between check and write.
         const user = await prisma.user.findUnique({
           where: { id: o.userId },
           select: { cash: true },
         });
-        if (!user || user.cash < total) {
+        if (!user || Number(user.cash) < total) {
           // Not enough cash — leave as pending, next tick might work
-          // (or user deposited cash since placing the order)
           continue;
         }
 
-        await prisma.$transaction(async (tx) => {
-          await tx.limitOrder.update({
-            where: { id: o.id },
+        const executed = await prisma.$transaction(async (tx) => {
+          // Atomically claim the order: PENDING → EXECUTED. Only one tick
+          // (or concurrent API call) can win. If count===0, skip this order.
+          const claimed = await tx.limitOrder.updateMany({
+            where: { id: o.id, status: "PENDING" },
             data: { status: "EXECUTED", executedAt: new Date() },
           });
+          if (claimed.count === 0) return false;
 
-          await tx.user.update({
-            where: { id: o.userId },
+          const spent = await tx.user.updateMany({
+            where: { id: o.userId, cash: { gte: total } },
             data: { cash: { decrement: total } },
           });
+          if (spent.count === 0) {
+            // Roll the order back to PENDING so a future tick can retry.
+            await tx.limitOrder.update({ where: { id: o.id }, data: { status: "PENDING", executedAt: null } });
+            return false;
+          }
 
           const existing = await tx.asset.findUnique({
             where: { userId_symbol: { userId: o.userId, symbol: o.symbol } },
@@ -84,9 +101,10 @@ export async function executeLimitOrders(): Promise<void> {
           });
 
           if (existing) {
-            const newQty = existing.quantity + o.quantity;
-            const newAvg =
-              (existing.averagePrice * existing.quantity + executionPrice * o.quantity) / newQty;
+            const curQty = Number(existing.quantity);
+            const curAvg = Number(existing.averagePrice);
+            const newQty = curQty + o.quantity;
+            const newAvg = (curAvg * curQty + executionPrice * o.quantity) / newQty;
             await tx.asset.update({
               where: { id: existing.id },
               data: { quantity: newQty, averagePrice: newAvg, currentPrice: executionPrice },
@@ -114,7 +132,10 @@ export async function executeLimitOrders(): Promise<void> {
               relatedAsset: o.symbol,
             },
           });
+          return true;
         });
+
+        if (!executed) continue;
 
         recordTrade(o.symbol, o.quantity);
         io?.to(`user:${o.userId}`).emit("notification:new", {
@@ -128,30 +149,38 @@ export async function executeLimitOrders(): Promise<void> {
           where: { userId_symbol: { userId: o.userId, symbol: o.symbol } },
           select: { id: true, quantity: true },
         });
-        if (!asset || asset.quantity < o.quantity) {
+        if (!asset || Number(asset.quantity) < o.quantity) {
           // Not enough units — leave pending
           continue;
         }
 
-        await prisma.$transaction(async (tx) => {
-          await tx.limitOrder.update({
-            where: { id: o.id },
+        const executed = await prisma.$transaction(async (tx) => {
+          const claimed = await tx.limitOrder.updateMany({
+            where: { id: o.id, status: "PENDING" },
             data: { status: "EXECUTED", executedAt: new Date() },
           });
+          if (claimed.count === 0) return false;
+
+          const decremented = await tx.asset.updateMany({
+            where: { id: asset.id, quantity: { gte: o.quantity } },
+            data: { quantity: { decrement: o.quantity } },
+          });
+          if (decremented.count === 0) {
+            await tx.limitOrder.update({ where: { id: o.id }, data: { status: "PENDING", executedAt: null } });
+            return false;
+          }
 
           await tx.user.update({
             where: { id: o.userId },
             data: { cash: { increment: total } },
           });
 
-          const remaining = asset.quantity - o.quantity;
-          if (remaining <= 0) {
+          const after = await tx.asset.findUnique({
+            where: { id: asset.id },
+            select: { quantity: true },
+          });
+          if (after && Number(after.quantity) <= 0) {
             await tx.asset.delete({ where: { id: asset.id } });
-          } else {
-            await tx.asset.update({
-              where: { id: asset.id },
-              data: { quantity: remaining },
-            });
           }
 
           await tx.transaction.create({
@@ -163,7 +192,10 @@ export async function executeLimitOrders(): Promise<void> {
               relatedAsset: o.symbol,
             },
           });
+          return true;
         });
+
+        if (!executed) continue;
 
         recordTrade(o.symbol, -o.quantity);
         io?.to(`user:${o.userId}`).emit("notification:new", {

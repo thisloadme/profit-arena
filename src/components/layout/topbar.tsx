@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Menu, UserCircle, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -33,10 +33,13 @@ export function TopBar({
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  // Track which pathname the drawer was opened on; it auto-closes on any
+  // navigation by deriving visibility from a comparison, no effect needed.
+  const [navOpenPath, setNavOpenPath] = useState<string | null>(null);
+  const navOpen = navOpenPath !== null && navOpenPath === pathname;
 
-  // Close mobile drawer on route change.
-  useEffect(() => { setNavOpen(false); }, [pathname]);
+  function openNav() { setNavOpenPath(pathname); }
+  function closeNav() { setNavOpenPath(null); }
 
   async function logout() {
     const res = await apiFetch("/api/auth/logout", { method: "POST" });
@@ -49,7 +52,7 @@ export function TopBar({
     <header className="glass-panel sticky top-0 z-20 flex h-16 items-center gap-3 rounded-none border-b border-border px-3 sm:px-4">
       {/* Mobile nav drawer toggle */}
       <button
-        onClick={() => setNavOpen(true)}
+        onClick={openNav}
         className="flex h-9 w-9 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-soft hover:text-text lg:hidden"
         aria-label="Open navigation"
         aria-expanded={navOpen}
@@ -132,7 +135,7 @@ export function TopBar({
           >
             <motion.div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setNavOpen(false)}
+              onClick={closeNav}
               aria-hidden
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -161,7 +164,7 @@ export function TopBar({
                   </div>
                 </div>
                 <button
-                  onClick={() => setNavOpen(false)}
+                  onClick={closeNav}
                   className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-soft hover:text-text"
                   aria-label="Close navigation"
                 >

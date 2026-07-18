@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getBusinessType, setupCost, revenueForLevel, expenseForLevel, effectiveWage } from "@/config/businesses";
 import { getTickerState } from "@/server/engine/tick-scheduler";
+import { checkUserRateLimit } from "@/lib/user-rate-limiter";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
 
 const createSchema = z.object({
   name: z.string().min(1).max(64),
@@ -14,8 +16,14 @@ const createSchema = z.object({
  * POST /api/business — create a new business.
  */
 export async function POST(req: Request) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const s = await getSession();
   if (!s?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!checkUserRateLimit(s.sub, 5)) {
+    return NextResponse.json({ error: "Too many requests, slow down." }, { status: 429 });
+  }
 
   const parsed = createSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
@@ -26,7 +34,7 @@ export async function POST(req: Request) {
 
   const cost = setupCost(type);
   const user = await prisma.user.findUnique({ where: { id: s.sub }, select: { cash: true } });
-  if (!user || user.cash < cost) return NextResponse.json(
+  if (!user || Number(user.cash) < cost) return NextResponse.json(
     { error: `Insufficient balance. Need ${cost.toLocaleString("en-US")}` },
     { status: 422 },
   );
@@ -64,5 +72,11 @@ export async function GET(req: Request) {
     where: all ? { ownerId: s.sub } : { ownerId: s.sub, isActive: true },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json({ businesses: list });
+  const out = list.map((b) => ({
+    ...b,
+    revenuePerTick: Number(b.revenuePerTick),
+    expensePerTick: Number(b.expensePerTick),
+    salaryPerEmployee: Number(b.salaryPerEmployee),
+  }));
+  return NextResponse.json({ businesses: out });
 }

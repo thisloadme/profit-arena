@@ -58,19 +58,24 @@ export function TutorialGuide() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProgress();
-  }, []);
-
   async function loadProgress() {
     const r = await apiFetch<{
       currentStep: number;
       completed: boolean;
       skipped: boolean;
     }>("/api/tutorial");
-    if (r.ok) setProgress(r.data);
-    else setLoading(false);
+    if (r.ok) {
+      setProgress(r.data);
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
   }
+
+  useEffect(() => {
+    // Defer so the initial setState lands async (React 19 rule).
+    queueMicrotask(loadProgress);
+  }, []);
 
   async function goToStep(step: number) {
     const r = await apiFetch("/api/tutorial", { method: "PATCH", body: { step } });

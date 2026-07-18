@@ -15,7 +15,7 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    { netWorth: user.netWorth, cash: user.cash, prevNetWorth: user.netWorth },
+    { netWorth: Number(user.netWorth), cash: Number(user.cash), prevNetWorth: Number(user.netWorth) },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

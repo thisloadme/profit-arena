@@ -73,7 +73,7 @@ export async function getGlobalImpact(): Promise<ActiveEventImpact> {
   let trendShift = 0;
   let volatilityMult = 1;
   for (const e of events) {
-    trendShift += e.impactFactor;
+    trendShift += Number(e.impactFactor);
     // Bump volatility ~30% per active event (compounding), capped at 3x.
     volatilityMult = Math.min(3, volatilityMult * 1.3);
   }

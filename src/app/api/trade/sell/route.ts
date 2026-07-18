@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { checkTradeLimit } from "@/lib/rate-limiter";
 import { GAME_CONFIG } from "@/config/game";
 import { isMarketOpen } from "@/server/engine/tick-scheduler";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
 
 const sellSchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -12,6 +13,9 @@ const sellSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const session = await getSession();
   if (!session?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!checkTradeLimit(session.sub)) {
@@ -38,9 +42,9 @@ export async function POST(req: Request) {
     where: { userId_symbol: { userId: session.sub, symbol } },
     select: { id: true, quantity: true },
   });
-  if (!asset || asset.quantity < quantity) {
+  if (!asset || Number(asset.quantity) < quantity) {
     return NextResponse.json(
-      { error: `Don't have ${quantity} × ${symbol}. Only ${asset?.quantity ?? 0} available.` },
+      { error: `Don't have ${quantity} × ${symbol}. Only ${asset ? Number(asset.quantity) : 0} available.` },
       { status: 422 },
     );
   }
@@ -61,22 +65,31 @@ export async function POST(req: Request) {
     });
   }
 
-  const totalCredit = market.currentPrice * quantity;
-  const remaining = asset.quantity - quantity;
+  const totalCredit = Number(market.currentPrice) * quantity;
 
+  // Atomic write: decrement quantity only if the user still holds enough.
+  // Guards against the TOCTOU race where two concurrent sells both passed
+  // the pre-txn check but only one set of shares exists.
   const trade = await prisma.$transaction(async (tx) => {
+    const decremented = await tx.asset.updateMany({
+      where: { id: asset.id, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    });
+    if (decremented.count === 0) throw new Error("INSUFFICIENT_SHARES");
+
+    // Credit cash either way.
     await tx.user.update({
       where: { id: session.sub },
       data: { cash: { increment: totalCredit } },
     });
 
-    if (remaining <= 0) {
+    // Drop the position if it hit zero (read current value post-decrement).
+    const after = await tx.asset.findUnique({
+      where: { id: asset.id },
+      select: { quantity: true },
+    });
+    if (after && Number(after.quantity) <= 0) {
       await tx.asset.delete({ where: { id: asset.id } });
-    } else {
-      await tx.asset.update({
-        where: { id: asset.id },
-        data: { quantity: remaining },
-      });
     }
 
     await tx.transaction.create({
@@ -90,7 +103,17 @@ export async function POST(req: Request) {
     });
 
     return { credit: totalCredit, quantity, symbol, price: market.currentPrice };
+  }).catch((e: unknown) => {
+    if (e instanceof Error && e.message === "INSUFFICIENT_SHARES") return null;
+    throw e;
   });
+
+  if (!trade) {
+    return NextResponse.json(
+      { error: `Don't have ${quantity} × ${symbol} anymore.` },
+      { status: 422 },
+    );
+  }
 
   // ponytail: anti-cheat — flag unusually large sells
   if (quantity > 100_000) {

@@ -60,8 +60,11 @@ export default function HistoryPage() {
   }
 
   useEffect(() => {
-    setLoading(true);
-    load();
+    // Defer so the loading-flag setState lands in an async callback, not
+    // synchronously in the effect body (React 19 rule).
+    if (!loading) queueMicrotask(() => setLoading(true));
+    queueMicrotask(load);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, from, to]);
 
   function csvUrl() {

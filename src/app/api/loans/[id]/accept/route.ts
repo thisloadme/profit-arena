@@ -38,27 +38,33 @@ export async function POST(
   const dueDate = new Date();
   dueDate.setMonth(dueDate.getMonth() + loan.tenorMonths);
 
-  await prisma.$transaction(async (tx) => {
-    // Lender: cash out, net worth drops by amount (cash leaves, no asset booked).
-    // ponytail: loansGiven is not recognized as a receivable in financial-tick's
-    // netWorth recompute (only `assets` model counts) — so lender's net worth is
-    // structurally understated until that's fixed. Decrement here stays consistent
-    // with the tick recompute. Add receivable accounting when P2P repayment lands.
-    await tx.user.update({
-      where: { id: loan.lenderId },
+  // The status transition PENDING → ACTIVE is the single source of truth.
+  // Atomically guarded by updateMany's WHERE clause: only one concurrent
+  // request can win the race. The lender cash decrement is also guarded
+  // so the loan can't drain a lender who spent the cash elsewhere.
+  const accepted = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.loan.updateMany({
+      where: { id, status: "PENDING" },
+      data: { borrowerId: s.sub, status: "ACTIVE", dueDate },
+    });
+    if (claimed.count === 0) throw new Error("ALREADY_TAKEN");
+
+    const spent = await tx.user.updateMany({
+      where: { id: loan.lenderId, cash: { gte: loan.amount } },
       data: { cash: { decrement: loan.amount }, netWorth: { decrement: loan.amount } },
     });
-    // Borrower: cash in + debt up by same amount → net worth neutral (stored
-    // netWorth already equals cash+assets-debt, unchanged by this transfer).
+    if (spent.count === 0) {
+      // Roll the loan back to PENDING so another borrower/lender-top-up can retry.
+      await tx.loan.update({ where: { id }, data: { status: "PENDING", borrowerId: null, dueDate: null } });
+      throw new Error("LENDER_INSUFFICIENT");
+    }
+
+    // Borrower: cash in + debt up by same amount → net worth neutral.
     await tx.user.update({
       where: { id: s.sub },
       data: { cash: { increment: loan.amount }, totalDebt: { increment: loan.amount } },
     });
-    await tx.loan.update({
-      where: { id },
-      data: { borrowerId: s.sub, status: "ACTIVE", dueDate },
-    });
-    // Record both sides so dashboard history + velocity sparkline reflect it.
+
     await tx.transaction.create({
       data: {
         userId: s.sub,
@@ -75,7 +81,20 @@ export async function POST(
         description: `Loan to ${borrower.username}`,
       },
     });
+    return true;
+  }).catch((e: unknown) => {
+    if (e instanceof Error && (e.message === "ALREADY_TAKEN" || e.message === "LENDER_INSUFFICIENT")) {
+      return e.message;
+    }
+    throw e;
   });
+
+  if (accepted === "ALREADY_TAKEN") {
+    return NextResponse.json({ error: "Already taken or inactive" }, { status: 422 });
+  }
+  if (accepted === "LENDER_INSUFFICIENT") {
+    return NextResponse.json({ error: "Lender does not have sufficient balance" }, { status: 422 });
+  }
 
   return NextResponse.json({ ok: true, dueDate });
 }

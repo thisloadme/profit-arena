@@ -3,15 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getTickerState } from "@/server/engine/tick-scheduler";
 import { payPeriodTicks, workHoursOverlap } from "@/config/jobs";
+import { checkUserRateLimit } from "@/lib/user-rate-limiter";
+import { isCrossOriginPost } from "@/lib/csrf-guard";
 
 /**
  * POST /api/jobs/:id/apply — apply for a job from the catalog.
  *  - Rejects if user already has an ACTIVE/NOTICE employment for the same job.
  *  - Rejects if work hours overlap an existing ACTIVE/NOTICE employment.
  */
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const csrf = isCrossOriginPost(req);
+  if (csrf) return csrf;
+
   const s = await getSession();
   if (!s?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!checkUserRateLimit(s.sub, 10)) {
+    return NextResponse.json({ error: "Too many requests, slow down." }, { status: 429 });
+  }
   const { id } = await params;
 
   const job = await prisma.job.findUnique({ where: { id } });
@@ -60,5 +68,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     },
   });
 
-  return NextResponse.json({ ok: true, employment });
+  return NextResponse.json({ ok: true, employment: { ...employment, salaryPerPay: Number(employment.salaryPerPay) } });
 }

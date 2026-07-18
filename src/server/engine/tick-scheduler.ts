@@ -71,7 +71,12 @@ export async function runOneTick(): Promise<void> {
 
     for (const m of markets) {
       const r = nextPriceFor(
-        { symbol: m.symbol, currentPrice: m.currentPrice, volatility: m.volatility, trendFactor: m.trendFactor },
+        {
+          symbol: m.symbol,
+          currentPrice: Number(m.currentPrice),
+          volatility: Number(m.volatility),
+          trendFactor: Number(m.trendFactor),
+        },
         [impact],
         consumeVolume(m.symbol),
       );
@@ -94,11 +99,28 @@ export async function runOneTick(): Promise<void> {
 
     // Periodically drop history older than the max chart timeframe (3 game-months).
     // Keeps the table bounded; runs every PRUNE_EVERY_TICKS ticks to stay cheap.
+    // Pruned in chunks to avoid holding a row-level lock on huge batches.
     if (getState().tickNumber % PRUNE_EVERY_TICKS === 0) {
       const cutoff = new Date(now.getTime() - MAX_RETENTION_TICKS * GAME_CONFIG.TICK_INTERVAL_MS);
+      const CHUNK = 500;
+      let totalPruned = 0;
       try {
-        const dropped = await prisma.priceHistory.deleteMany({ where: { tickAt: { lt: cutoff } } });
-        if (dropped.count > 0) console.log(`[tick] pruned ${dropped.count} stale price-history rows (older than ${cutoff.toISOString()})`);
+        // Repeat chunked deletes until no more stale rows remain. Each chunk
+        // acquires a short lock and releases before the next, so concurrent
+        // chart reads don't get blocked behind a giant DELETE.
+        for (;;) {
+          const dropped = await prisma.$executeRaw`
+            DELETE FROM "price_history"
+            WHERE "id" IN (
+              SELECT "id" FROM "price_history"
+              WHERE "tickAt" < ${cutoff}::timestamptz
+              LIMIT ${CHUNK}
+            )
+          `;
+          totalPruned += Number(dropped);
+          if (Number(dropped) < CHUNK) break;
+        }
+        if (totalPruned > 0) console.log(`[tick] pruned ${totalPruned} stale price-history rows (older than ${cutoff.toISOString()})`);
       } catch (e) {
         console.error("[tick] price-history prune failed:", e);
       }
@@ -177,22 +199,25 @@ export async function runOneTick(): Promise<void> {
             netWorth: true,
             assets: { select: { symbol: true, type: true } },
             businesses: { where: { isActive: true }, select: { id: true } },
-            loansGiven: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
+            loansGiven: { where: { status: "ACTIVE" }, select: { id: true, status: true, borrowerId: true } },
             loansTaken: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
           },
         });
         for (const u of achievementUsers) {
+          // Filter self-lent bank loans (lenderId == borrowerId == self) — they
+          // shouldn't count as "lending to other players" for achievements.
+          const realLoansGiven = u.loansGiven.filter((l) => l.borrowerId !== u.id);
           await evaluateAchievements({
             userId: u.id,
-            netWorth: u.netWorth,
+            netWorth: Number(u.netWorth),
             hasActiveLoan: u.loansTaken.length > 0,
             activeAssets: u.assets.map((a) => ({ symbol: a.symbol, type: a.type })),
             hasBusiness: u.businesses.length > 0,
             hasCrypto: u.assets.some((a) => a.type === "CRYPTO"),
             hasTraded: u.assets.length > 0,
-            hasLent: u.loansGiven.some((l) => l.status === "ACTIVE"),
+            hasLent: realLoansGiven.some((l) => l.status === "ACTIVE"),
             hasBorrower: u.loansTaken.some((l) => l.status === "ACTIVE"),
-            hasSurvivedRecession: hasActiveRecession && u.netWorth > 0,
+            hasSurvivedRecession: hasActiveRecession && Number(u.netWorth) > 0,
           });
         }
       }

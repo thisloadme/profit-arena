@@ -30,7 +30,9 @@ export function NotificationBell() {
   }
 
   useEffect(() => {
-    load();
+    // Defer so setState lands in an async callback, not synchronously in the
+    // effect body (React 19 rule).
+    queueMicrotask(load);
   }, []);
 
   useEffect(() => {

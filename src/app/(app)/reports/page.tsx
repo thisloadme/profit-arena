@@ -34,11 +34,18 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    apiFetch<ReportData>(`/api/reports?year=${year}&month=${month}`).then((r) => {
-      if (r.ok) setData(r.data);
-      setLoading(false);
-    });
+    let cancelled = false;
+    // Set the loading flag inside the async chain (not synchronously in the
+    // effect body) per the React 19 rule.
+    Promise.resolve()
+      .then(() => { if (!cancelled) setLoading(true); })
+      .then(() => apiFetch<ReportData>(`/api/reports?year=${year}&month=${month}`))
+      .then((r) => {
+        if (cancelled) return;
+        if (r.ok) setData(r.data);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [year, month]);
 
   return (
@@ -116,7 +123,7 @@ export default function ReportsPage() {
                     tickFormatter={(v: number) => v.toLocaleString("en-US")} />
                   <Tooltip
                     cursor={{ fill: "var(--surface-highest)", opacity: 0.3 }}
-                    contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+                    contentStyle={{ background: "var(--bg-card)", color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
                     formatter={(val: unknown) => [typeof val === "number" ? val.toLocaleString("en-US") : String(val), "Amount"]}
                   />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={48}>

@@ -14,8 +14,8 @@ export async function GET() {
     symbol: m.symbol,
     name: NAME_BY_SYMBOL[m.symbol] ?? m.symbol,
     type: m.type,
-    price: m.currentPrice,
-    volatility: m.volatility,
+    price: Number(m.currentPrice),
+    volatility: Number(m.volatility),
     lastUpdated: m.lastUpdated,
   }));
   return NextResponse.json({ markets: items });

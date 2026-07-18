@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma";
  * exceeds 50ms on average.
  */
 let cache: { global: LeaderboardRow[] } | null = null;
-let cacheTick = -1;
 
 export type LeaderboardRow = {
   rank: number;
@@ -21,7 +20,9 @@ export type LeaderboardRow = {
  * Snapshot all users' net worths into LeaderboardSnapshot table
  * and return the ranked list. Called from tick-scheduler.
  */
-export async function recomputeLeaderboard(tickNumber: number): Promise<LeaderboardRow[]> {
+// tickNumber is kept in the signature for logging/future use by callers.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function recomputeLeaderboard(_tickNumber = 0): Promise<LeaderboardRow[]> {
   const users = await prisma.user.findMany({
     select: { id: true, username: true, netWorth: true, totalAssets: true },
     orderBy: { netWorth: "desc" },
@@ -41,12 +42,11 @@ export async function recomputeLeaderboard(tickNumber: number): Promise<Leaderbo
     rank: i + 1,
     userId: u.id,
     username: u.username,
-    netWorth: u.netWorth,
-    totalAssets: u.totalAssets,
+    netWorth: Number(u.netWorth),
+    totalAssets: Number(u.totalAssets),
   }));
 
   cache = { global: rows };
-  cacheTick = tickNumber;
   return rows;
 }
 
@@ -105,7 +105,7 @@ export async function getLeaderboardSummary(): Promise<LeaderboardSummary> {
   });
   return {
     totalPlayers: agg._count,
-    totalWealth: agg._sum.netWorth ?? 0,
+    totalWealth: agg._sum.netWorth ? Number(agg._sum.netWorth) : 0,
     yourPercentile: null, // filled by caller using cached rows
   };
 }

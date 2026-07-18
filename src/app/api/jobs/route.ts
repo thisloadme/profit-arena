@@ -21,5 +21,7 @@ export async function GET() {
     }),
   ]);
 
-  return NextResponse.json({ jobs, employments: myEmployments, tickNumber: getTickerState().tickNumber });
+  const outJobs = jobs.map((j) => ({ ...j, salaryPerPay: Number(j.salaryPerPay) }));
+  const outEmps = myEmployments.map((e) => ({ ...e, salaryPerPay: Number(e.salaryPerPay) }));
+  return NextResponse.json({ jobs: outJobs, employments: outEmps, tickNumber: getTickerState().tickNumber });
 }

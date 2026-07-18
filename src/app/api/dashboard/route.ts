@@ -16,10 +16,20 @@ export async function GET(req: Request) {
   const uid = session.sub;
 
   // ponytail: days-map for timeframe. ALL uses earliest txn date.
+  // Days is constrained to a finite number — no string concat into SQL.
   const { searchParams } = new URL(req.url);
   const tf = searchParams.get("timeframe") ?? "1M";
   const daysMap: Record<string, number | "ALL"> = { "1d": 1, "1w": 7, "1M": 30, "1Y": 365, "ALL": "ALL" };
   const days = daysMap[tf] ?? 30;
+  const isAll = days === "ALL";
+  const daysNum = isAll ? 30 : (days as number);
+
+  // Validate uid is a real UUID before it touches any $queryRaw (defense-in-depth
+  // even though Prisma parameterizes). Throwing early prevents SQL syntax errors
+  // leaking through the error envelope.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)) {
+    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+  }
 
   const [user, loans, events, txns, assetsWithPrice] = await Promise.all([
     prisma.user.findUniqueOrThrow({
@@ -33,14 +43,19 @@ export async function GET(req: Request) {
       take: 5,
     }),
     getActiveEvents(),
-    // Daily cash-flow for N days (ALL = earliest txn → now)
+    // Daily cash-flow for N days. `isAll` is bound as a boolean and `daysNum`
+    // as a number — Prisma parameterizes both, no string interpolation of user
+    // input into SQL.
     prisma.$queryRaw<{ day: Date; net: number }[]>`
       SELECT DATE("createdAt") as day, SUM(amount) as net
       FROM transactions
       WHERE "userId" = ${uid}::uuid
         AND "createdAt" >= CASE
-          WHEN ${tf} = 'ALL' THEN (SELECT COALESCE(MIN("createdAt"), NOW() - INTERVAL '30 days') FROM transactions WHERE "userId" = ${uid}::uuid)
-          ELSE NOW() - (${days} || ' days')::INTERVAL
+          WHEN ${isAll}::boolean THEN (
+            SELECT COALESCE(MIN("createdAt"), NOW() - INTERVAL '30 days')
+            FROM transactions WHERE "userId" = ${uid}::uuid
+          )
+          ELSE NOW() - make_interval(days => ${daysNum}::int)
         END
       GROUP BY day ORDER BY day
     `,
@@ -54,8 +69,9 @@ export async function GET(req: Request) {
   // Asset allocation: group by type
   const allocMap = new Map<string, { value: number; invested: number }>();
   for (const a of assetsWithPrice) {
-    const val = a.quantity * a.currentPrice;
-    const cost = a.quantity * a.averagePrice;
+    const qty = Number(a.quantity);
+    const val = qty * Number(a.currentPrice);
+    const cost = qty * Number(a.averagePrice);
     const existing = allocMap.get(a.type) ?? { value: 0, invested: 0 };
     existing.value += val;
     existing.invested += cost;
@@ -78,7 +94,7 @@ export async function GET(req: Request) {
     txnsByDay.set(key, (txnsByDay.get(key) ?? 0) + Number(tx.net));
     totalFromTxns += Number(tx.net);
   }
-  const baseNetWorth = user.netWorth - totalFromTxns;
+  const baseNetWorth = Number(user.netWorth) - totalFromTxns;
 
   const rangeDays = days === "ALL" ? Math.max(1, txnsByDay.size) : (days as number);
   const now = new Date();
@@ -92,12 +108,17 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    netWorth: user.netWorth,
-    cash: user.cash,
-    totalAssets: user.totalAssets,
-    totalDebt: user.totalDebt,
+    netWorth: Number(user.netWorth),
+    cash: Number(user.cash),
+    totalAssets: Number(user.totalAssets),
+    totalDebt: Number(user.totalDebt),
     allocation,
-    loans,
+    loans: loans.map((l) => ({
+      ...l,
+      amount: Number(l.amount),
+      interestRate: Number(l.interestRate),
+      remainingAmount: Number(l.remainingAmount),
+    })),
     events: events.map((e) => ({
       id: e.id,
       eventType: e.eventType,

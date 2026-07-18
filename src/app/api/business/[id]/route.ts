@@ -15,6 +15,17 @@ import {
 type Ctx = { uid: string; bizId: string; search: URLSearchParams };
 type HandlerFn = (ctx: Ctx) => Promise<Response>;
 
+/** Coerce Decimal money fields on a Business to numbers so the client doesn't
+ *  receive serialized strings. */
+function serializeBiz<T extends Record<string, unknown>>(b: T): T {
+  const out: Record<string, unknown> = { ...b };
+  for (const k of ["revenuePerTick", "expensePerTick", "salaryPerEmployee"]) {
+    const v = out[k];
+    if (v && typeof v === "object" && "toNumber" in v) out[k] = (v as { toNumber: () => number }).toNumber();
+  }
+  return out as T;
+}
+
 const actions: Record<string, HandlerFn> = {
   async upgrade({ uid, bizId }) {
     const biz = await prisma.business.findFirstOrThrow({ where: { id: bizId, ownerId: uid } });
@@ -22,7 +33,7 @@ const actions: Record<string, HandlerFn> = {
 
     const cost = upgradeCost(biz.type, biz.level);
     const user = await prisma.user.findUnique({ where: { id: uid }, select: { cash: true } });
-    if (!user || user.cash < cost) return NextResponse.json(
+    if (!user || Number(user.cash) < cost) return NextResponse.json(
       { error: `Insufficient balance. Need ${cost.toLocaleString("en-US")}` },
       { status: 422 },
     );
@@ -35,11 +46,11 @@ const actions: Record<string, HandlerFn> = {
         data: {
           level: nextLevel,
           revenuePerTick: revenueForLevel(biz.type, nextLevel),
-          expensePerTick: expenseForLevel({ type: biz.type, level: nextLevel, employees: biz.employeeCount, wage: biz.salaryPerEmployee }),
+          expensePerTick: expenseForLevel({ type: biz.type, level: nextLevel, employees: biz.employeeCount, wage: Number(biz.salaryPerEmployee) }),
         },
       });
     });
-    return NextResponse.json({ ok: true, business: updated });
+    return NextResponse.json({ ok: true, business: serializeBiz(updated) });
   },
 
   async hire({ uid, bizId }) {
@@ -47,9 +58,9 @@ const actions: Record<string, HandlerFn> = {
     const nextEmp = biz.employeeCount + 1;
     const updated = await prisma.business.update({
       where: { id: bizId },
-      data: { employeeCount: nextEmp, expensePerTick: expenseForLevel({ type: biz.type, level: biz.level, employees: nextEmp, wage: biz.salaryPerEmployee }) },
+      data: { employeeCount: nextEmp, expensePerTick: expenseForLevel({ type: biz.type, level: biz.level, employees: nextEmp, wage: Number(biz.salaryPerEmployee) }) },
     });
-    return NextResponse.json({ ok: true, business: updated });
+    return NextResponse.json({ ok: true, business: serializeBiz(updated) });
   },
 
   async fire({ uid, bizId }) {
@@ -58,9 +69,9 @@ const actions: Record<string, HandlerFn> = {
     const nextEmp = biz.employeeCount - 1;
     const updated = await prisma.business.update({
       where: { id: bizId },
-      data: { employeeCount: nextEmp, expensePerTick: expenseForLevel({ type: biz.type, level: biz.level, employees: nextEmp, wage: biz.salaryPerEmployee }) },
+      data: { employeeCount: nextEmp, expensePerTick: expenseForLevel({ type: biz.type, level: biz.level, employees: nextEmp, wage: Number(biz.salaryPerEmployee) }) },
     });
-    return NextResponse.json({ ok: true, business: updated });
+    return NextResponse.json({ ok: true, business: serializeBiz(updated) });
   },
 
   /**
@@ -72,7 +83,7 @@ const actions: Record<string, HandlerFn> = {
     if (dir !== "up" && dir !== "down") return NextResponse.json({ error: "direction must be 'up' or 'down'" }, { status: 422 });
 
     const biz = await prisma.business.findFirstOrThrow({ where: { id: bizId, ownerId: uid } });
-    const current = effectiveWage(biz.type, biz.salaryPerEmployee);
+    const current = effectiveWage(biz.type, Number(biz.salaryPerEmployee));
     const step = current * WAGE_STEP;
     const next = dir === "up" ? current + step : current - step;
     const base = effectiveWage(biz.type, 0);
@@ -85,7 +96,7 @@ const actions: Record<string, HandlerFn> = {
         expensePerTick: expenseForLevel({ type: biz.type, level: biz.level, employees: biz.employeeCount, wage: clamped }),
       },
     });
-    return NextResponse.json({ ok: true, business: updated, ratio: wageRatio(biz.type, clamped) });
+    return NextResponse.json({ ok: true, business: serializeBiz(updated), ratio: wageRatio(biz.type, clamped) });
   },
 
   async liquidate({ uid, bizId }) {

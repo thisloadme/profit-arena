@@ -41,7 +41,7 @@ const TIMEFRAMES: { id: TimeframeId; label: string }[] = [
  * Default timeframe (1M) is server-rendered for instant first paint;
  * switching pills fetches from the dashboard API.
  */
-export function NetWorthHero({ netWorth: initialNetWorth, prevNetWorth: initialPrev, sparkline: initialSpark, className }: Props) {
+export function NetWorthHero({ netWorth: initialNetWorth, sparkline: initialSpark, className }: Props) {
   const { socket } = useSocket();
   const [timeframe, setTimeframe] = useState<TimeframeId>("1M");
 
@@ -57,8 +57,9 @@ export function NetWorthHero({ netWorth: initialNetWorth, prevNetWorth: initialP
   useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
   // Ref for current timeframe so the socket handler doesn't need it in deps.
+  // Updated in an effect (not during render) per React 19.
   const timeframeRef = useRef(timeframe);
-  timeframeRef.current = timeframe;
+  useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
 
   const fetchData = useCallback(async (tf: TimeframeId) => {
     // ponytail: loading indicator via shared state; data replaces server props.
@@ -70,10 +71,15 @@ export function NetWorthHero({ netWorth: initialNetWorth, prevNetWorth: initialP
     setData({ netWorth: json.netWorth, sparkline: json.sparkline, loading: false });
   }, [initialNetWorth, initialSpark]);
 
-  // Re-fetch on timeframe change.
+  // Re-fetch on timeframe change. 1M is covered by the server-rendered props,
+  // so we just drop the override. All setState is deferred into microtasks so
+  // nothing fires synchronously in the effect body (React 19 rule).
   useEffect(() => {
-    if (timeframe === "1M") { setData(null); return; } // server render covers default
-    fetchData(timeframe);
+    if (timeframe === "1M") {
+      queueMicrotask(() => mountedRef.current && setData(null));
+      return;
+    }
+    queueMicrotask(() => fetchData(timeframe));
   }, [timeframe, fetchData]);
 
   // Socket: refetch dashboard data for current timeframe on tick.

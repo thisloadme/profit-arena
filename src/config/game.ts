@@ -127,3 +127,20 @@ export function formatPercent(value: number) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
 }
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Rich in-game clock label, e.g. "Mon, W1 Jul, 22:10". No year. */
+export function formatGameTimeRich(ms: number): string {
+  const d = new Date(GAME_CONFIG.GAME_START_DATE.getTime() + ms);
+  const weekday = WEEKDAY_SHORT[d.getUTCDay()];
+  const weekOfMonth = Math.floor((d.getUTCDate() - 1) / 7) + 1;
+  const month = MONTH_SHORT[d.getUTCMonth()];
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${weekday}, W${weekOfMonth} ${month}, ${hh}:${mm}`;
+}

@@ -12,5 +12,16 @@ export async function GET() {
     select: { symbol: true, name: true, type: true, quantity: true, averagePrice: true, currentPrice: true },
   });
 
-  return NextResponse.json({ assets });
+  // Coerce Decimal fields to numbers so client-side arithmetic doesn't
+  // choke on serialized strings.
+  const out = assets.map((a) => ({
+    symbol: a.symbol,
+    name: a.name,
+    type: a.type,
+    quantity: Number(a.quantity),
+    averagePrice: Number(a.averagePrice),
+    currentPrice: Number(a.currentPrice),
+  }));
+
+  return NextResponse.json({ assets: out });
 }
